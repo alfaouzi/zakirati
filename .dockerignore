@@ -1,0 +1,10 @@
+node_modules
+android
+.git
+.gitignore
+.env
+.env.local
+.env.*.local
+dist
+test
+*.log

@@ -1,0 +1,6 @@
+{
+  "name": "ذاكرتي تحكي - My Memory Tells",
+  "description": "لعبة تربوية تفاعلية للأطفال لتدريب التذكر والتعبير الشفهي من خلال إعادة سرد القصص والمقارنة الدلالية الذكية وتشجيع الطفل دون إطلاق أحكام.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

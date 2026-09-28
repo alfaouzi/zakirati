@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <!-- Disallow cloud backup for all app data to preserve child privacy -->
+        <exclude path="." />
+    </cloud-backup>
+    <device-transfer>
+        <!-- Disallow device-to-device transfer of temporary recordings or data -->
+        <exclude path="." />
+    </device-transfer>
+</data-extraction-rules>

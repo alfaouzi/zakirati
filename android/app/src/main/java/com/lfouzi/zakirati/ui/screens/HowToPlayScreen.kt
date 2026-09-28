@@ -1,0 +1,106 @@
+package com.lfouzi.zakirati.ui.screens
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+
+@Composable
+fun HowToPlayScreen(
+    onStartGame: () => Unit,
+    onBack: () => Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column {
+            IconButton(onClick = onBack) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "رجوع")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "كيفية اللعب",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Black
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            StepCard(
+                stepNumber = "1",
+                iconEmoji = "🎙️",
+                title = "احكِ قصتك",
+                description = "سجّل قصة أو موقفًا حدث معك."
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            StepCard(
+                stepNumber = "2",
+                iconEmoji = "🧠",
+                title = "تذكّرها",
+                description = "أعد حكاية القصة دون الرجوع إلى التسجيل الأول."
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            StepCard(
+                stepNumber = "3",
+                iconEmoji = "⭐",
+                title = "اكتشف ما تذكرت",
+                description = "ستقارن اللعبة بين القصتين وتخبرك بما تذكرته."
+            )
+        }
+
+        Button(
+            onClick = onStartGame,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Icon(Icons.Default.PlayArrow, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("ابدأ اللعبة", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun StepCard(
+    stepNumber: String,
+    iconEmoji: String,
+    title: String,
+    description: String
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(iconEmoji, fontSize = 32.sp)
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text("الخطوة $stepNumber: $title", fontWeight = FontWeight.Black, fontSize = 16.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(description, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+            }
+        }
+    }
+}
