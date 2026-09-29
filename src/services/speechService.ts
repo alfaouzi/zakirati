@@ -20,9 +20,15 @@ export class SpeechToTextService {
   private recognition: any = null;
   private isSupported: boolean = false;
   private isCurrentlyListening: boolean = false;
+  private isRecognitionActive: boolean = false;
   private currentTranscript: string = '';
+  private lastInterimTranscript: string = '';
   private mediaRecorder: MediaRecorder | null = null;
   private audioChunks: Blob[] = [];
+  private currentSessionId: number = 0;
+  private stopPromise: Promise<string> | null = null;
+  private pendingStopResolver: (() => void) | null = null;
+  private stopTimeoutId: any = null;
 
   constructor() {
     const win = typeof window !== 'undefined' ? (window as IWindow) : null;
@@ -52,7 +58,29 @@ export class SpeechToTextService {
   }
 
   public async startListening(callbacks: SpeechToTextCallbacks): Promise<void> {
+    // If a previous stop operation is still finishing its lifecycle, wait for it
+    if (this.stopPromise) {
+      try {
+        await this.stopPromise;
+      } catch (e) {
+        console.warn('Error waiting for previous stop operation:', e);
+      }
+    }
+
+    // Ensure any previously active recognition instance is stopped before starting a new one
+    if (this.isRecognitionActive) {
+      try {
+        await this.stopListening();
+      } catch (e) {
+        console.warn('Error stopping active recognition before start:', e);
+      }
+    }
+
+    // Advance session ID to invalidate any stale events from past sessions
+    const sessionId = ++this.currentSessionId;
+
     this.currentTranscript = '';
+    this.lastInterimTranscript = '';
     this.audioChunks = [];
 
     // Optional audio capture for recording duration & privacy-compliant cleanup
@@ -81,12 +109,21 @@ export class SpeechToTextService {
       return;
     }
 
+    // Ensure recognition settings are maintained
+    this.recognition.continuous = true;
+    this.recognition.interimResults = true;
+    this.recognition.lang = 'ar-SA';
+
     this.recognition.onstart = () => {
+      if (this.currentSessionId !== sessionId) return;
       this.isCurrentlyListening = true;
+      this.isRecognitionActive = true;
       callbacks.onStart?.();
     };
 
     this.recognition.onresult = (event: any) => {
+      if (this.currentSessionId !== sessionId) return;
+
       let interimTranscript = '';
       let finalTranscript = '';
 
@@ -103,12 +140,20 @@ export class SpeechToTextService {
         this.currentTranscript = (this.currentTranscript + ' ' + finalTranscript).trim();
       }
 
+      this.lastInterimTranscript = interimTranscript.trim();
       const displayTranscript = (this.currentTranscript + ' ' + interimTranscript).trim();
       callbacks.onResult?.(displayTranscript, Boolean(finalTranscript));
     };
 
     this.recognition.onerror = (event: any) => {
+      if (this.currentSessionId !== sessionId) return;
       console.warn('Speech recognition event error:', event.error);
+
+      // Aborted by stop() or intentional cancel
+      if (event.error === 'aborted') {
+        return;
+      }
+
       let friendlyMessage = 'لم أستطع سماع القصة بوضوح. حاول مرة أخرى.';
 
       if (event.error === 'not-allowed' || event.error === 'permission-denied') {
@@ -123,49 +168,96 @@ export class SpeechToTextService {
     };
 
     this.recognition.onend = () => {
+      this.isRecognitionActive = false;
+      if (this.currentSessionId !== sessionId) return;
       this.isCurrentlyListening = false;
       callbacks.onEnd?.();
+
+      // Trigger resolution for stopListening if pending
+      if (this.pendingStopResolver) {
+        this.pendingStopResolver();
+      }
     };
 
     try {
+      this.isRecognitionActive = true;
       this.recognition.start();
-    } catch (err) {
+    } catch (err: any) {
       console.warn('Recognition start exception:', err);
-      // Already running or failed
+      // Already running or failed to initialize
+      this.isCurrentlyListening = true;
       callbacks.onStart?.();
     }
   }
 
   public stopListening(): Promise<string> {
-    return new Promise((resolve) => {
-      this.isCurrentlyListening = false;
+    // If a stop operation is already ongoing, reuse its promise
+    if (this.stopPromise) {
+      return this.stopPromise;
+    }
 
-      if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
-        try {
+    this.isCurrentlyListening = false;
+
+    // Immediately stop microphone stream tracks & MediaRecorder
+    if (this.mediaRecorder) {
+      try {
+        if (this.mediaRecorder.state !== 'inactive') {
           this.mediaRecorder.stop();
-          // Stop all audio tracks to turn off the microphone indicator immediately
-          this.mediaRecorder.stream.getTracks().forEach((track) => track.stop());
-        } catch (e) {
-          console.warn('MediaRecorder stop error:', e);
         }
+        this.mediaRecorder.stream.getTracks().forEach((track) => track.stop());
+      } catch (e) {
+        console.warn('MediaRecorder stop error:', e);
       }
+    }
 
-      if (this.recognition) {
-        try {
-          this.recognition.stop();
-        } catch (e) {
-          console.warn('Recognition stop error:', e);
+    // If speech recognition is not supported or not active, resolve immediately
+    if (!this.isSupported || !this.recognition || !this.isRecognitionActive) {
+      this.isRecognitionActive = false;
+      const result = (this.currentTranscript || this.lastInterimTranscript).trim();
+      this.cleanupTemporaryAudio();
+      return Promise.resolve(result);
+    }
+
+    this.stopPromise = new Promise<string>((resolve) => {
+      let resolved = false;
+
+      const finish = () => {
+        if (resolved) return;
+        resolved = true;
+
+        if (this.stopTimeoutId) {
+          clearTimeout(this.stopTimeoutId);
+          this.stopTimeoutId = null;
         }
-      }
 
-      // Allow a brief moment for final speech packets
-      setTimeout(() => {
-        const result = this.currentTranscript.trim();
-        // Clean up temporary audio chunks immediately for privacy
+        this.pendingStopResolver = null;
+        this.stopPromise = null;
+        this.isCurrentlyListening = false;
+        this.isRecognitionActive = false;
+
+        const result = (this.currentTranscript || this.lastInterimTranscript).trim();
         this.cleanupTemporaryAudio();
         resolve(result);
-      }, 300);
+      };
+
+      this.pendingStopResolver = finish;
+
+      // Safe fallback timeout (2.5 seconds) so Promise can never remain pending indefinitely
+      this.stopTimeoutId = setTimeout(() => {
+        console.warn('SpeechRecognition stop lifecycle fallback timeout reached');
+        finish();
+      }, 2500);
+
+      try {
+        // Calling stop() allows speech recognition to flush remaining buffered audio and fire final onresult then onend
+        this.recognition.stop();
+      } catch (e) {
+        console.warn('Recognition stop error:', e);
+        finish();
+      }
     });
+
+    return this.stopPromise;
   }
 
   /**
