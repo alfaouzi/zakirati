@@ -100,26 +100,19 @@ export class SpeechToTextService {
     this.lastInterimTranscript = '';
     this.audioChunks = [];
 
-    // Optional audio capture for recording duration & privacy-compliant cleanup
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    // MediaRecorder / getUserMedia capture is temporarily disabled for this test
+    // so SpeechRecognition is the only component accessing the microphone hardware.
+    console.log('[SpeechDiag] MediaRecorder capture is disabled for this test (SpeechRecognition has exclusive microphone access).');
+    if (this.mediaRecorder) {
       try {
-        console.log('[SpeechDiag] Requesting getUserMedia mic access for session...');
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        console.log('[SpeechDiag] getUserMedia mic access granted.');
-        this.mediaRecorder = new MediaRecorder(stream);
-        this.mediaRecorder.ondataavailable = (event) => {
-          if (event.data.size > 0) {
-            this.audioChunks.push(event.data);
-          }
-        };
-        this.mediaRecorder.start(250);
-      } catch (err: any) {
-        console.warn('[SpeechDiag] MediaRecorder error or mic denied:', err);
-        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          callbacks.onError?.('يحتاج التطبيق إلى استخدام الميكروفون حتى تتمكن من تسجيل قصتك.');
-          return;
+        if (this.mediaRecorder.state !== 'inactive') {
+          this.mediaRecorder.stop();
         }
+        this.mediaRecorder.stream?.getTracks().forEach((track) => track.stop());
+      } catch (err) {
+        console.warn('[SpeechDiag] Error cleaning up prior MediaRecorder tracks:', err);
       }
+      this.mediaRecorder = null;
     }
 
     if (!this.isSupported || !this.recognition) {
@@ -248,17 +241,18 @@ export class SpeechToTextService {
 
     this.isCurrentlyListening = false;
 
-    // Immediately stop microphone stream tracks & MediaRecorder
+    // Immediately stop microphone stream tracks & MediaRecorder if any exist
     if (this.mediaRecorder) {
       try {
         if (this.mediaRecorder.state !== 'inactive') {
           this.mediaRecorder.stop();
         }
-        this.mediaRecorder.stream.getTracks().forEach((track) => track.stop());
+        this.mediaRecorder.stream?.getTracks().forEach((track) => track.stop());
         console.log('[SpeechDiag] MediaRecorder and microphone tracks stopped.');
       } catch (e) {
         console.warn('[SpeechDiag] MediaRecorder stop error:', e);
       }
+      this.mediaRecorder = null;
     }
 
     // If speech recognition is not supported or not active, resolve immediately
@@ -324,6 +318,16 @@ export class SpeechToTextService {
    */
   public cleanupTemporaryAudio(): void {
     this.audioChunks = [];
+    if (this.mediaRecorder) {
+      try {
+        if (this.mediaRecorder.state !== 'inactive') {
+          this.mediaRecorder.stop();
+        }
+        this.mediaRecorder.stream?.getTracks().forEach((track) => track.stop());
+      } catch (e) {
+        // ignore
+      }
+    }
     this.mediaRecorder = null;
   }
 }
