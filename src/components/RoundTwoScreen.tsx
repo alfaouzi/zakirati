@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, Square, Sparkles, AlertCircle, CheckCircle2, Brain, Keyboard } from 'lucide-react';
+import { Mic, Square, AlertCircle, CheckCircle2, RotateCcw, Keyboard } from 'lucide-react';
 import { speechToTextService } from '../services/speechService';
 import { SoundWave } from './SoundWave';
 
@@ -123,11 +123,11 @@ export const RoundTwoScreen: React.FC<RoundTwoScreenProps> = ({
       </div>
 
       {/* Memory Focus Reminder */}
-      <div className="bg-purple-50 rounded-2xl p-4 border border-purple-200 mb-6 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-purple-200 text-purple-800 flex items-center justify-center shrink-0">
-          <Brain className="w-6 h-6" />
+      <div className="bg-teal-50 rounded-2xl p-4 border border-teal-200 mb-6 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-teal-200 text-teal-800 flex items-center justify-center shrink-0">
+          <RotateCcw className="w-5 h-5" />
         </div>
-        <p className="text-xs sm:text-sm font-bold text-purple-950 leading-relaxed">
+        <p className="text-xs sm:text-sm font-bold text-teal-950 leading-relaxed">
           تحدي الذاكرة: لا ننظر إلى القصة الأولى، بل نعتمد على ما تتذكره من أحداث وشخصيات وأماكن!
         </p>
       </div>
@@ -201,7 +201,7 @@ export const RoundTwoScreen: React.FC<RoundTwoScreenProps> = ({
             onClick={handleCompareStories}
             className="w-full py-4 px-6 rounded-2xl bg-linear-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-amber-950 font-black text-xl shadow-lg shadow-amber-400/40 active:scale-[0.98] transition-all flex items-center justify-center gap-3 cursor-pointer"
           >
-            <Sparkles className="w-7 h-7 fill-amber-950" />
+            <CheckCircle2 className="w-6 h-6 text-amber-950" />
             <span>قارن القصتين</span>
           </button>
         </div>

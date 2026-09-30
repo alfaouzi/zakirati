@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Group centered strictly within safe zone (radius 33 around 54,54) -->
+    <!-- Echo Wave 1 (Upper Outer Echo Arc) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FDE68A"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M 40,35 A 16,16 0 0,1 68,35" />
+
+    <!-- Echo Wave 2 (Middle Echo Arc) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#F59E0B"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M 44,43 A 11,11 0 0,1 64,43" />
+
+    <!-- Echo Wave 3 (Inner Echo Arc) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FBBF24"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M 48,50 A 6,6 0 0,1 60,50" />
+
+    <!-- Open Storybook: Left Page (Warm Cream) -->
+    <path
+        android:fillColor="#FFFBEB"
+        android:pathData="M 54,61 C 48,58 39,57 32,59 C 31,59.3 30.5,60.2 30.5,61.2 L 30.5,74 C 30.5,75 31.4,75.8 32.4,75.6 C 39.5,73.8 48,74.5 54,77.5 Z" />
+
+    <!-- Open Storybook: Right Page (White) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 54,61 C 60,58 69,57 76,59 C 77,59.3 77.5,60.2 77.5,61.2 L 77.5,74 C 77.5,75 76.6,75.8 75.6,75.6 C 68.5,73.8 60,74.5 54,77.5 Z" />
+
+    <!-- Open Storybook: Spine and Accent Ridge (Golden Amber) -->
+    <path
+        android:fillColor="#D97706"
+        android:pathData="M 53.2,60.5 L 54.8,60.5 L 54.8,78.5 L 53.2,78.5 Z" />
+
+    <!-- Book Bottom Cover Shadow -->
+    <path
+        android:fillColor="#115E59"
+        android:pathData="M 32,76 C 39.5,74.5 47,75.2 54,78.5 C 61,75.2 68.5,74.5 76,76 L 76,77.5 C 68.5,76 61,76.7 54,80 C 47,76.7 39.5,76 32,77.5 Z" />
+</vector>

@@ -135,7 +135,7 @@ class GameViewModel(
                 onFailure = {
                     _uiState.value = _uiState.value.copy(
                         gameState = GameState.ERROR,
-                        errorMessage = "تعذر الاتصال بذاكرتي الآن. تحقق من اتصال الإنترنت وحاول مرة أخرى."
+                        errorMessage = "تعذر الاتصال بـ صدى حكايتي الآن. تحقق من اتصال الإنترنت وحاول مرة أخرى."
                     )
                 }
             )

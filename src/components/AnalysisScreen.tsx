@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Brain, Sparkles, Star } from 'lucide-react';
+import { AppSymbol } from './AppLogo';
 
 export const AnalysisScreen: React.FC = () => {
   const messages = [
@@ -20,22 +20,16 @@ export const AnalysisScreen: React.FC = () => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-140px)] px-4 py-8 text-center">
-      {/* Friendly Animated Brain / Star Mascot */}
-      <div className="relative mb-8">
-        <div className="w-32 h-32 rounded-3xl bg-linear-to-tr from-amber-400 via-amber-300 to-yellow-200 flex items-center justify-center shadow-xl shadow-amber-200 border-4 border-white animate-pulse">
-          <Brain className="w-18 h-18 text-amber-900" />
-        </div>
-        <div className="absolute -top-3 -right-3 w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-md animate-spin duration-3000">
-          <Sparkles className="w-6 h-6 fill-yellow-200" />
-        </div>
-        <div className="absolute -bottom-2 -left-2 w-9 h-9 rounded-2xl bg-yellow-400 text-amber-950 flex items-center justify-center shadow-md animate-bounce">
-          <Star className="w-5 h-5 fill-amber-950" />
+      {/* Official App Symbol with Harmonic Pulse */}
+      <div className="mb-8">
+        <div className="w-32 h-32 rounded-3xl bg-linear-to-tr from-teal-600 via-teal-700 to-emerald-800 flex items-center justify-center shadow-xl shadow-teal-200 border-4 border-white animate-pulse p-4">
+          <AppSymbol size={80} className="w-20 h-20 drop-shadow-sm" />
         </div>
       </div>
 
       {/* Main Title */}
       <h2 className="text-3xl font-black text-amber-950 mb-4 tracking-tight">
-        ذاكرتي تحكي تفكر...
+        صدى حكايتي يراجع القصتين...
       </h2>
 
       {/* Rotating Friendly Message */}

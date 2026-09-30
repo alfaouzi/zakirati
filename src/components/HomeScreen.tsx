@@ -1,5 +1,6 @@
 import React from 'react';
-import { Play, HelpCircle, Info, BookOpen, Brain, Sparkles, Smile } from 'lucide-react';
+import { Play, HelpCircle, Info, BookOpen } from 'lucide-react';
+import { AppSymbol } from './AppLogo';
 
 interface HomeScreenProps {
   onStartGame: () => void;
@@ -14,22 +15,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 }) => {
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] px-4 py-8 text-center">
-      {/* Decorative friendly memory mascot card */}
-      <div className="relative mb-6">
-        <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-3xl bg-linear-to-tr from-amber-400 via-amber-300 to-yellow-200 flex items-center justify-center shadow-lg shadow-amber-200/50 border-4 border-white rotate-1 hover:rotate-0 transition-transform">
-          <Brain className="w-16 h-16 sm:w-20 sm:h-20 text-amber-900 drop-shadow-xs" />
-        </div>
-        <div className="absolute -top-2 -right-2 w-9 h-9 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-md animate-bounce">
-          <Sparkles className="w-5 h-5 fill-yellow-200" />
-        </div>
-        <div className="absolute -bottom-2 -left-2 w-9 h-9 rounded-2xl bg-emerald-400 text-white flex items-center justify-center shadow-md">
-          <Smile className="w-5 h-5 text-emerald-950" />
+      {/* Official App Logo Emblem */}
+      <div className="mb-6">
+        <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-3xl bg-linear-to-tr from-teal-600 via-teal-700 to-emerald-800 flex items-center justify-center shadow-xl shadow-teal-200/50 border-4 border-white hover:scale-105 transition-transform p-3">
+          <AppSymbol size={90} className="w-20 h-20 sm:w-24 sm:h-24 drop-shadow-sm" />
         </div>
       </div>
 
       {/* Main Title & Concept */}
       <h1 className="text-4xl sm:text-5xl font-black text-amber-950 mb-3 tracking-tight">
-        ذاكرتي تحكي
+        صدى حكايتي
       </h1>
       <p className="text-xl sm:text-2xl font-bold text-amber-800/90 mb-8 max-w-md">
         "احكِ قصتك... ثم أعدها من ذاكرتك!"
@@ -37,7 +32,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
       {/* Quick reassurance pill */}
       <div className="inline-flex items-center gap-2 bg-amber-100/70 text-amber-900 px-4 py-1.5 rounded-full text-sm font-semibold mb-8 border border-amber-200">
-        <Sparkles className="w-4 h-4 text-amber-600" />
+        <BookOpen className="w-4 h-4 text-amber-700" />
         <span>لعبة ذاكرة ممتعة وتشجيعية للأبطال الصغار</span>
       </div>
 

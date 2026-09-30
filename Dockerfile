@@ -1,4 +1,4 @@
-# Production Dockerfile for "ذاكرتي تحكي / My Memory Tells" Backend on Google Cloud Run
+# Production Dockerfile for "صدى حكايتي / My Memory Tells" Backend on Google Cloud Run
 FROM node:20-slim AS builder
 
 WORKDIR /app

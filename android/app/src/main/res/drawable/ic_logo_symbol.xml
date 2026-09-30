@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="64dp"
+    android:height="64dp"
+    android:viewportWidth="64"
+    android:viewportHeight="64">
+
+    <!-- Subtle Rounded Container Background -->
+    <path
+        android:fillColor="#0D9488"
+        android:pathData="M 12,4 C 6,4 4,6 4,12 L 4,52 C 4,58 6,60 12,60 L 52,60 C 58,60 60,58 60,52 L 60,12 C 60,6 58,4 52,4 Z" />
+
+    <!-- Echo Wave 1 (Upper Outer Arc) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FDE68A"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M 23,20 A 11,11 0 0,1 41,20" />
+
+    <!-- Echo Wave 2 (Middle Arc) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#F59E0B"
+        android:strokeWidth="2.7"
+        android:strokeLineCap="round"
+        android:pathData="M 26,26 A 7,7 0 0,1 38,26" />
+
+    <!-- Echo Wave 3 (Inner Arc) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FBBF24"
+        android:strokeWidth="2.7"
+        android:strokeLineCap="round"
+        android:pathData="M 29,31 A 3.5,3.5 0 0,1 35,31" />
+
+    <!-- Open Book: Left Page -->
+    <path
+        android:fillColor="#FFFBEB"
+        android:pathData="M 32,38 C 28,36 21,35 16,36.5 L 16,48 C 21,46.5 28,47.5 32,50 Z" />
+
+    <!-- Open Book: Right Page -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 32,38 C 36,36 43,35 48,36.5 L 48,48 C 43,46.5 36,47.5 32,50 Z" />
+
+    <!-- Book Spine -->
+    <path
+        android:fillColor="#D97706"
+        android:pathData="M 31.4,37.5 L 32.6,37.5 L 32.6,50.5 L 31.4,50.5 Z" />
+</vector>

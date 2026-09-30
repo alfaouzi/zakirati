@@ -21,8 +21,8 @@ android {
 
     buildTypes {
         debug {
-            // Local emulator backend for debug / local development
-            buildConfigField("String", "BACKEND_URL", "\"http://10.0.2.2:3000/analyze-story\"")
+            // Render backend endpoint
+            buildConfigField("String", "BACKEND_URL", "\"https://zakirati.onrender.com/analyze-story\"")
         }
         release {
             isMinifyEnabled = true
@@ -30,8 +30,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // PRODUCTION REQUIREMENT: Must be set to the deployed HTTPS backend URL (e.g., https://api.zakirati.app/analyze-story)
-            buildConfigField("String", "BACKEND_URL", "\"https://api.zakirati.app/analyze-story\"")
+            // Render backend endpoint
+            buildConfigField("String", "BACKEND_URL", "\"https://zakirati.onrender.com/analyze-story\"")
         }
     }
     compileOptions {
@@ -48,6 +48,7 @@ android {
 }
 
 dependencies {
+    implementation("androidx.core:core-ktx:1.15.0")
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")

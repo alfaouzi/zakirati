@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">صدى حكايتي</string>
+    <string name="app_tagline">احكِ قصتك... ثم أعدها من ذاكرتك!</string>
+    <string name="app_developer">ل.فوزي</string>
+    <string name="app_project_en">My Memory Tells</string>
+</resources>

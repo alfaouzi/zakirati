@@ -1,5 +1,6 @@
 import React from 'react';
-import { ArrowRight, ShieldCheck, Heart, Sparkles, UserCheck } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Heart, BookOpen, UserCheck } from 'lucide-react';
+import { AppSymbol } from './AppLogo';
 
 interface AboutScreenProps {
   onBack: () => void;
@@ -24,10 +25,10 @@ export const AboutScreen: React.FC<AboutScreenProps> = ({ onBack }) => {
       <div className="bg-white rounded-3xl p-6 border-2 border-amber-100 shadow-xs space-y-6">
         {/* App Title & Badge */}
         <div className="text-center space-y-2 pb-4 border-b border-amber-100">
-          <div className="inline-block p-3 rounded-2xl bg-amber-100 text-amber-900 mb-1">
-            <Sparkles className="w-8 h-8 fill-amber-300" />
+          <div className="inline-block p-1 mb-2">
+            <AppSymbol size={64} className="mx-auto shadow-xs" />
           </div>
-          <h1 className="text-3xl font-black text-amber-950">ذاكرتي تحكي</h1>
+          <h1 className="text-3xl font-black text-amber-950">صدى حكايتي</h1>
           <p className="text-sm font-semibold text-amber-700">
             My Memory Tells
           </p>
@@ -73,8 +74,8 @@ export const AboutScreen: React.FC<AboutScreenProps> = ({ onBack }) => {
           </div>
 
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center shrink-0">
-              <Sparkles className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-xl bg-teal-100 text-teal-800 flex items-center justify-center shrink-0">
+              <BookOpen className="w-4 h-4" />
             </div>
             <div>
               <h4 className="font-bold text-sm text-slate-800">تنويه تربوي</h4>

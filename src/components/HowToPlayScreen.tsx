@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, Mic, Brain, Star, Play } from 'lucide-react';
+import { ArrowRight, Mic, RotateCcw, Trophy, Play } from 'lucide-react';
 
 interface HowToPlayScreenProps {
   onStartGame: () => void;
@@ -21,16 +21,16 @@ export const HowToPlayScreen: React.FC<HowToPlayScreenProps> = ({
     },
     {
       step: '2',
-      icon: <Brain className="w-8 h-8 text-purple-700" />,
-      bg: 'bg-purple-100 border-purple-300',
-      title: 'تذكّرها',
+      icon: <RotateCcw className="w-8 h-8 text-teal-700" />,
+      bg: 'bg-teal-100 border-teal-300',
+      title: 'تذكّرها وأعد حكايتها',
       desc: 'أعد حكاية القصة دون الرجوع إلى التسجيل الأول.',
       hint: 'اعتمد على ذاكرتك الجميلة لتتذكر أهم الأحداث والأشخاص.',
     },
     {
       step: '3',
-      icon: <Star className="w-8 h-8 text-yellow-600 fill-yellow-400" />,
-      bg: 'bg-yellow-100 border-yellow-300',
+      icon: <Trophy className="w-8 h-8 text-amber-700" />,
+      bg: 'bg-amber-100 border-amber-300',
       title: 'اكتشف ما تذكرت',
       desc: 'ستقارن اللعبة بين القصتين وتخبرك بما تذكرته.',
       hint: 'ستحصل على نتيجة مبهجة ورسالة تشجيعية دافئة بصوت اللعبة.',

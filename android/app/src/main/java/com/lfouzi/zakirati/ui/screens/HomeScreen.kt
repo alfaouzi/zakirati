@@ -1,5 +1,6 @@
 package com.lfouzi.zakirati.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -10,10 +11,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.lfouzi.zakirati.R
 
 @Composable
 fun HomeScreen(
@@ -28,8 +31,22 @@ fun HomeScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            shadowElevation = 3.dp,
+            modifier = Modifier.size(80.dp)
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.ic_logo_symbol),
+                contentDescription = "شعار صدى حكايتي",
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         Text(
-            text = "ذاكرتي تحكي",
+            text = "صدى حكايتي",
             fontSize = 38.sp,
             fontWeight = FontWeight.Black,
             color = MaterialTheme.colorScheme.onBackground,

@@ -78,7 +78,7 @@ class AndroidSpeechToTextService(
             SpeechRecognizer.ERROR_NO_MATCH -> "لم أسمع أي كلام. اضغط على الميكروفون وابدأ بحكاية قصتك!"
             SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "لم أسمع صوتًا منذ لحظات. حاول مجددًا."
             SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "يحتاج التطبيق إلى استخدام الميكروفون حتى تتمكن من تسجيل قصتك."
-            SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "تعذر الاتصال بذاكرتي الآن. تحقق من اتصال الإنترنت وحاول مرة أخرى."
+            SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "تعذر الاتصال بـ صدى حكايتي الآن. تحقق من اتصال الإنترنت وحاول مرة أخرى."
             else -> "لم أستطع سماع القصة بوضوح. حاول مرة أخرى."
         }
         _state.value = SpeechRecognitionState.Error(friendlyMessage)

@@ -1,5 +1,5 @@
 /**
- * Unit tests for "ذاكرتي تحكي" (My Memory Tells)
+ * Unit tests for "صدى حكايتي" (My Memory Tells)
  * Validates domain rules, scores, service fallbacks, state transitions, and error handling.
  */
 
@@ -20,7 +20,7 @@ function assert(condition: boolean, testName: string) {
 }
 
 async function runTests() {
-  console.log('\n--- Running Unit Tests for ذاكرتي تحكي (My Memory Tells) ---\n');
+  console.log('\n--- Running Unit Tests for صدى حكايتي (My Memory Tells) ---\n');
 
   // Test 1: StoryAnalysisResult validation with MockService
   const mockService = new MockStoryAnalysisService();

@@ -139,7 +139,7 @@ async function handleAnalyzeStory(req: Request, res: Response) {
       },
     });
 
-    const systemInstruction = `أنت المساعد الذكي للعبة الأطفال التعليمية "ذاكرتي تحكي" (My Memory Tells) للمطور ل.فوزي.
+    const systemInstruction = `أنت المساعد الذكي للعبة الأطفال التعليمية "صدى حكايتي" (My Memory Tells) للمطور ل.فوزي.
 الهدف هو تدريب ذاكرة الطفل والتعبير الشفهي بتشجيع وإيجابية مطلقة.
 المهمة:
 قارن دلاليًا ومعنويًا بين القصة الأولى التي حكاها الطفل، وإعادة سردها من الذاكرة في الجولة الثانية.
@@ -267,7 +267,7 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`ذاكرتي تحكي (My Memory Tells) server running on http://0.0.0.0:${PORT}`);
+    console.log(`صدى حكايتي (My Memory Tells) server running on http://0.0.0.0:${PORT}`);
   });
 }
 

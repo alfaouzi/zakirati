@@ -6,7 +6,6 @@ import {
   VolumeX,
   RotateCcw,
   Home,
-  Sparkles,
   Trophy,
   Heart,
 } from 'lucide-react';
@@ -145,7 +144,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
       {/* Strengths Card ("ما الذي تذكرته جيدًا؟") */}
       <div className="bg-white rounded-3xl p-5 border-2 border-amber-100 shadow-sm mb-6">
         <div className="flex items-center gap-2 mb-3">
-          <Sparkles className="w-5 h-5 text-amber-600" />
+          <CheckCircle2 className="w-5 h-5 text-teal-700" />
           <h3 className="text-lg font-black text-slate-800">
             ما الذي تذكرته جيدًا؟
           </h3>
