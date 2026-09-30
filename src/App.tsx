@@ -17,7 +17,8 @@ import { RoundTwoScreen } from './components/RoundTwoScreen';
 import { AnalysisScreen } from './components/AnalysisScreen';
 import { ResultScreen } from './components/ResultScreen';
 import { AndroidViewWrapper } from './components/AndroidViewWrapper';
-import { AlertCircle, RotateCcw } from 'lucide-react';
+import { SpeechDiagModal } from './components/SpeechDiagModal';
+import { AlertCircle, RotateCcw, Terminal } from 'lucide-react';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<GameScreen>('HOME');
@@ -26,6 +27,7 @@ export default function App() {
   const [analysisResult, setAnalysisResult] = useState<StoryAnalysisResult | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [isDiagOpen, setIsDiagOpen] = useState<boolean>(false);
 
   const handleStartGame = () => {
     setFirstStory('');
@@ -97,6 +99,7 @@ export default function App() {
           onNavigateHome={handleNavigateHome}
           soundEnabled={soundEnabled}
           onToggleSound={handleToggleSound}
+          onOpenDiagnostics={() => setIsDiagOpen(true)}
         />
 
         <main className="flex-1 flex flex-col">
@@ -172,6 +175,23 @@ export default function App() {
           )}
         </main>
       </div>
+
+      {/* Floating Diagnostics Button for easy phone access */}
+      <button
+        onClick={() => setIsDiagOpen(true)}
+        className="fixed bottom-3 start-3 z-40 px-3 py-1.5 rounded-full bg-slate-900/90 hover:bg-slate-900 text-amber-300 text-xs font-bold flex items-center gap-1.5 shadow-lg border border-amber-500/40 backdrop-blur-xs cursor-pointer active:scale-95 transition-transform"
+        title="سجل التشخيص"
+        aria-label="سجل التشخيص"
+      >
+        <Terminal className="w-3.5 h-3.5 text-amber-400" />
+        <span>سجل التشخيص</span>
+      </button>
+
+      {/* Speech Recognition Diagnostics Modal */}
+      <SpeechDiagModal
+        isOpen={isDiagOpen}
+        onClose={() => setIsDiagOpen(false)}
+      />
     </AndroidViewWrapper>
   );
 }

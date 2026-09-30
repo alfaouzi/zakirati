@@ -3,6 +3,8 @@
  * Handles speech recognition in Arabic with graceful error handling and privacy-preserving audio cleanup.
  */
 
+import './speechDiagnostics';
+
 export interface SpeechToTextCallbacks {
   onStart?: () => void;
   onResult?: (transcript: string, isFinal: boolean) => void;
