@@ -4,19 +4,23 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
 fun HowToPlayScreen(
-    onStartGame: () => Unit,
-    onBack: () => Unit
+    onStartGame: () -> Unit,
+    onBack: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -41,17 +45,17 @@ fun HowToPlayScreen(
 
             StepCard(
                 stepNumber = "1",
-                iconEmoji = "🎙️",
+                icon = Icons.Default.Mic,
                 title = "احكِ قصتك",
-                description = "سجّل قصة أو موقفًا حدث معك."
+                description = "سجّل قصة أو موقفًا حدث معك بصوتك."
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             StepCard(
                 stepNumber = "2",
-                iconEmoji = "🧠",
-                title = "تذكّرها",
+                icon = Icons.Default.Refresh,
+                title = "تذكّرها وأعد حكايتها",
                 description = "أعد حكاية القصة دون الرجوع إلى التسجيل الأول."
             )
 
@@ -59,7 +63,7 @@ fun HowToPlayScreen(
 
             StepCard(
                 stepNumber = "3",
-                iconEmoji = "⭐",
+                icon = Icons.Default.EmojiEvents,
                 title = "اكتشف ما تذكرت",
                 description = "ستقارن اللعبة بين القصتين وتخبرك بما تذكرته."
             )
@@ -82,7 +86,7 @@ fun HowToPlayScreen(
 @Composable
 private fun StepCard(
     stepNumber: String,
-    iconEmoji: String,
+    icon: ImageVector,
     title: String,
     description: String
 ) {
@@ -94,12 +98,33 @@ private fun StepCard(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(iconEmoji, fontSize = 32.sp)
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier.size(48.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
             Spacer(modifier = Modifier.width(16.dp))
             Column {
-                Text("الخطوة $stepNumber: $title", fontWeight = FontWeight.Black, fontSize = 16.sp)
+                Text(
+                    text = "الخطوة $stepNumber: $title",
+                    fontWeight = FontWeight.Black,
+                    fontSize = 16.sp
+                )
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(description, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                Text(
+                    text = description,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 14.sp
+                )
             }
         }
     }

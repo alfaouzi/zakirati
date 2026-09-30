@@ -49,7 +49,7 @@ fun AnalysisScreen() {
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            text = "صدى حكايتي يفكر...",
+            text = "صدى حكايتي يراجع القصتين...",
             fontSize = 26.sp,
             fontWeight = FontWeight.Black,
             textAlign = TextAlign.Center

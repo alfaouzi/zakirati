@@ -20,9 +20,9 @@ import com.lfouzi.zakirati.R
 
 @Composable
 fun HomeScreen(
-    onStartGame: () => Unit,
-    onHowToPlay: () => Unit,
-    onAbout: () => Unit
+    onStartGame: () -> Unit,
+    onHowToPlay: () -> Unit,
+    onAbout: () -> Unit
 ) {
     Column(
         modifier = Modifier

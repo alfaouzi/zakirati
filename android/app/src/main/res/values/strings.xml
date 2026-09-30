@@ -4,4 +4,10 @@
     <string name="app_tagline">احكِ قصتك... ثم أعدها من ذاكرتك!</string>
     <string name="app_developer">ل.فوزي</string>
     <string name="app_project_en">My Memory Tells</string>
+    <string name="about_title">عن التطبيق</string>
+    <string name="how_to_play_title">كيفية اللعب</string>
+    <string name="start_game">ابدأ اللعبة</string>
+    <string name="btn_back">العودة</string>
+    <string name="about_description">لعبة تربوية تفاعلية تساعد الطفل على تدريب التذكر والتعبير الشفهي من خلال إعادة سرد القصص.</string>
+    <string name="about_disclaimer">ملاحظة: هذا التطبيق لعبة تربوية تشجيعية ولا يقدم أي تشخيص طبي، نفسي، أو تقييم للذكاء.</string>
 </resources>

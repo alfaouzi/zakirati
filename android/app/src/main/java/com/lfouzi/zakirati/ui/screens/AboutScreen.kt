@@ -17,7 +17,7 @@ import com.lfouzi.zakirati.R
 
 @Composable
 fun AboutScreen(
-    onBack: () => Unit
+    onBack: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -27,7 +27,10 @@ fun AboutScreen(
     ) {
         Column {
             IconButton(onClick = onBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "رجوع")
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "رجوع"
+                )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -100,7 +103,11 @@ fun AboutScreen(
                 .height(52.dp),
             shape = RoundedCornerShape(16.dp)
         ) {
-            Text("العودة", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(
+                text = "العودة",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
