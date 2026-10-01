@@ -124,6 +124,14 @@ class GameViewModelTest {
     }
 
     @Test
+    fun navigateBackToRoundOne_preservesFirstStoryTranscript() {
+        viewModel.setManualStoryForTesting("قصتي الأولى", "قصتي الثانية")
+        viewModel.navigateBackToRoundOne()
+        assertEquals(GameState.ROUND_ONE_RECORDED, viewModel.uiState.value.gameState)
+        assertEquals("قصتي الأولى", viewModel.uiState.value.firstStoryTranscript)
+    }
+
+    @Test
     fun retryComparison_withBlankTranscripts_resetsToHomeSafely() = runTest {
         viewModel.startNewGame()
         viewModel.retryComparison()

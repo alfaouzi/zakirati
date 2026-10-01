@@ -91,6 +91,14 @@ class GameViewModel(
         )
     }
 
+    fun navigateBackToRoundOne() {
+        speechService.stopListening()
+        _uiState.value = _uiState.value.copy(
+            gameState = GameState.ROUND_ONE_RECORDED,
+            errorMessage = null
+        )
+    }
+
     fun startRecordingRoundTwo() {
         _uiState.value = _uiState.value.copy(
             gameState = GameState.ROUND_TWO_RECORDING,
