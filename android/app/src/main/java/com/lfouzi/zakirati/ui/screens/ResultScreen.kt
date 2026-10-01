@@ -1,19 +1,20 @@
 package com.lfouzi.zakirati.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -30,6 +31,7 @@ fun ResultScreen(
     onGoHome: () -> Unit
 ) {
     val isSufficient = result.overallScore > 0
+    var showParentReport by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -38,8 +40,9 @@ fun ResultScreen(
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Child-friendly header
         Text(
-            text = if (isSufficient) "مقارنة وتحليل الروايتين" else "نتيجة فحص التسجيل",
+            text = if (isSufficient) "أداء رائع لذاكرتك يا بطل! 🌟" else "نتيجة فحص التسجيل",
             fontSize = 26.sp,
             fontWeight = FontWeight.Black,
             textAlign = TextAlign.Center
@@ -63,7 +66,7 @@ fun ResultScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Prominent Score Card
+        // Big Prominent Score & Stars Card
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
@@ -72,12 +75,12 @@ fun ResultScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp),
+                    .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     text = "${result.overallScore}%",
-                    fontSize = 52.sp,
+                    fontSize = 56.sp,
                     fontWeight = FontWeight.Black,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -88,149 +91,42 @@ fun ResultScreen(
                     fontWeight = FontWeight.Bold
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
+
+                val starCount = when {
+                    result.overallScore >= 90 -> 5
+                    result.overallScore >= 78 -> 4
+                    result.overallScore >= 65 -> 3
+                    result.overallScore >= 50 -> 2
+                    else -> 1
+                }
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    ScoreBadge("الأحداث الرئيسية", result.mainEventsScore)
-                    ScoreBadge("ترتيب الأحداث", result.sequenceScore)
-                    ScoreBadge("التفاصيل", result.detailsScore)
+                    for (i in 1..5) {
+                        Icon(
+                            Icons.Default.Star,
+                            contentDescription = null,
+                            tint = if (i <= starCount && isSufficient) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Recalled Details with Examples
-        if (isSufficient && result.recalledDetails.isNotEmpty()) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "ما تذكرته بأمثلة من كلامك:",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Black,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    result.recalledDetails.forEach { item ->
-                        Row(
-                            modifier = Modifier.padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.Check,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(item, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        }
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        // Omitted / Changed Details
-        if (isSufficient && (result.omittedDetails.isNotEmpty() || result.changedDetails.isNotEmpty())) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "أوجه الاختلاف وما أغفلته أو غيّرته:",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Black,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    result.omittedDetails.forEach { item ->
-                        Row(
-                            modifier = Modifier.padding(vertical = 3.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.Close,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(item, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                        }
-                    }
-
-                    result.changedDetails.forEach { item ->
-                        Row(
-                            modifier = Modifier.padding(vertical = 3.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.Info,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(item, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                        }
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        // Elements Analysis (Characters, Places, Sequence)
-        if (isSufficient && (result.charactersAnalysis.isNotBlank() || result.placesAnalysis.isNotBlank() || result.sequenceAnalysis.isNotBlank())) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "تحليل عناصر القصة:",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Black
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    if (result.charactersAnalysis.isNotBlank()) {
-                        Text("• الشخصيات: ${result.charactersAnalysis}", fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                        Spacer(modifier = Modifier.height(4.dp))
-                    }
-                    if (result.placesAnalysis.isNotBlank()) {
-                        Text("• الأماكن: ${result.placesAnalysis}", fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                        Spacer(modifier = Modifier.height(4.dp))
-                    }
-                    if (result.sequenceAnalysis.isNotBlank()) {
-                        Text("• تسلسل الأحداث: ${result.sequenceAnalysis}", fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        // Strengths Card
+        // Positive Highlights for the Child
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = if (isSufficient) "نقاط القوة المستخلصة" else "ملاحظات التذكر والسرد",
+                    text = if (isSufficient) "أشياء رائعة تذكرتها! 👏" else "ملاحظات التسجيل",
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Black
                 )
@@ -243,7 +139,7 @@ fun ResultScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            Icons.Default.Star,
+                            Icons.Default.Check,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(18.dp)
@@ -257,7 +153,7 @@ fun ResultScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Encouragement Card
+        // Encouragement Voice Card
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
@@ -298,7 +194,7 @@ fun ResultScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Actions
+        // Main Actions for the Child
         Button(
             onClick = onPlayAgain,
             modifier = Modifier
@@ -308,7 +204,7 @@ fun ResultScreen(
         ) {
             Icon(Icons.Default.Refresh, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("جولة جديدة", fontSize = 17.sp, fontWeight = FontWeight.Black)
+            Text("جولة جديدة 🎮", fontSize = 17.sp, fontWeight = FontWeight.Black)
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -324,6 +220,107 @@ fun ResultScreen(
             Spacer(modifier = Modifier.width(8.dp))
             Text("العودة للرئيسية", fontWeight = FontWeight.Bold)
         }
+
+        // Parent / Educator Detailed Report (Collapsible Accordion)
+        if (isSufficient) {
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showParentReport = !showParentReport },
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "تقرير تحليلي لولي الأمر والمعلم 👨‍👩‍👧",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                            Text(
+                                text = if (showParentReport) "اضغط للإغلاق" else "اضغط للاطلاع على التفاصيل الدلالية ومقارنة السرد",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Icon(
+                            if (showParentReport) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                            contentDescription = null
+                        )
+                    }
+
+                    if (showParentReport) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        HorizontalDivider()
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Sub-Scores
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            ScoreBadge("الأحداث الرئيسية", result.mainEventsScore)
+                            ScoreBadge("ترتيب الأحداث", result.sequenceScore)
+                            ScoreBadge("التفاصيل", result.detailsScore)
+                        }
+
+                        if (result.recalledDetails.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "ما تذكره الطفل بالأمثلة:",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            result.recalledDetails.forEach {
+                                Text("• $it", fontSize = 12.sp, modifier = Modifier.padding(vertical = 2.dp))
+                            }
+                        }
+
+                        if (result.omittedDetails.isNotEmpty() || result.changedDetails.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "أوجه الاختلاف والتبديل في السرد:",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                            result.omittedDetails.forEach {
+                                Text("• غاب عن السرد: $it", fontSize = 12.sp, modifier = Modifier.padding(vertical = 2.dp))
+                            }
+                            result.changedDetails.forEach {
+                                Text("• أعاد صياغته: $it", fontSize = 12.sp, modifier = Modifier.padding(vertical = 2.dp))
+                            }
+                        }
+
+                        if (result.charactersAnalysis.isNotBlank() || result.placesAnalysis.isNotBlank() || result.sequenceAnalysis.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "تحليل عناصر القصة:",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (result.charactersAnalysis.isNotBlank()) {
+                                Text("• الشخصيات: ${result.charactersAnalysis}", fontSize = 12.sp)
+                            }
+                            if (result.placesAnalysis.isNotBlank()) {
+                                Text("• الأماكن: ${result.placesAnalysis}", fontSize = 12.sp)
+                            }
+                            if (result.sequenceAnalysis.isNotBlank()) {
+                                Text("• تسلسل الأحداث: ${result.sequenceAnalysis}", fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -331,6 +328,6 @@ fun ResultScreen(
 private fun ScoreBadge(title: String, score: Int) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(title, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-        Text("$score%", fontSize = 16.sp, fontWeight = FontWeight.Black)
+        Text("$score%", fontSize = 15.sp, fontWeight = FontWeight.Black)
     }
 }

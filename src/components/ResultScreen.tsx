@@ -14,6 +14,9 @@ import {
   Sparkles,
   HelpCircle,
   Shuffle,
+  ChevronDown,
+  ChevronUp,
+  GraduationCap,
 } from 'lucide-react';
 import { StoryAnalysisResult } from '../types/game';
 import { textToSpeechService } from '../services/ttsService';
@@ -32,6 +35,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
   soundEnabled,
 }) => {
   const [isPlayingTts, setIsPlayingTts] = useState(false);
+  const [showParentReport, setShowParentReport] = useState(false);
 
   useEffect(() => {
     if (soundEnabled && result.encouragementMessage) {
@@ -71,14 +75,14 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6">
-      {/* Title */}
+      {/* Child-Friendly Header */}
       <div className="text-center mb-6">
         <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-900 text-xs font-black px-3 py-1 rounded-full mb-2">
           <Trophy className="w-4 h-4 text-amber-700" />
           <span>نتيجة الجولة</span>
         </span>
         <h2 className="text-3xl font-black text-amber-950">
-          {isSufficient ? 'مقارنة وتحليل الروايتين' : 'نتيجة فحص التسجيل'}
+          {isSufficient ? 'أداء رائع لذاكرتك يا بطل! 🌟' : 'نتيجة فحص التسجيل'}
         </h2>
         {result.isFallback && (
           <div className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full">
@@ -87,7 +91,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
         )}
       </div>
 
-      {/* Main Score Card */}
+      {/* Joyful Star & Score Card for the Child */}
       <div className="bg-white rounded-3xl p-6 border-2 border-amber-100 shadow-sm text-center mb-6 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-amber-100/50 rounded-full blur-2xl -mr-10 -mt-10" />
         <div className="absolute bottom-0 left-0 w-32 h-32 bg-yellow-100/50 rounded-full blur-2xl -ml-10 -mb-10" />
@@ -103,11 +107,11 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
           </p>
 
           {/* Stars Representation */}
-          <div className="flex items-center justify-center gap-2 mb-6">
+          <div className="flex items-center justify-center gap-2">
             {[1, 2, 3, 4, 5].map((s) => (
               <Star
                 key={s}
-                className={`w-8 h-8 transition-transform ${
+                className={`w-9 h-9 transition-transform ${
                   s <= stars && isSufficient
                     ? 'text-amber-400 fill-amber-400 drop-shadow-xs scale-110'
                     : 'text-slate-200 fill-slate-100'
@@ -115,144 +119,15 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
               />
             ))}
           </div>
-
-          {/* Sub Scores Grid */}
-          <div className="grid grid-cols-3 gap-2 pt-4 border-t border-amber-100">
-            <div className="bg-amber-50/80 rounded-2xl p-2.5">
-              <span className="block text-[11px] font-bold text-amber-900 mb-1">
-                الأحداث الرئيسية
-              </span>
-              <span className="text-lg font-black text-amber-950">
-                {result.mainEventsScore}%
-              </span>
-            </div>
-
-            <div className="bg-amber-50/80 rounded-2xl p-2.5">
-              <span className="block text-[11px] font-bold text-amber-900 mb-1">
-                ترتيب الأحداث
-              </span>
-              <span className="text-lg font-black text-amber-950">
-                {result.sequenceScore}%
-              </span>
-            </div>
-
-            <div className="bg-amber-50/80 rounded-2xl p-2.5">
-              <span className="block text-[11px] font-bold text-amber-900 mb-1">
-                تفاصيل القصة
-              </span>
-              <span className="text-lg font-black text-amber-950">
-                {result.detailsScore}%
-              </span>
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* Comparison Sections: What was remembered vs What was omitted/changed */}
-      {isSufficient && (
-        <div className="space-y-4 mb-6">
-          {/* Recalled with quotes */}
-          {result.recalledDetails && result.recalledDetails.length > 0 && (
-            <div className="bg-white rounded-3xl p-5 border-2 border-emerald-100 shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="w-5 h-5 text-emerald-600" />
-                <h3 className="text-base font-black text-slate-800">
-                  ما تذكرته بأمثلة من كلامك:
-                </h3>
-              </div>
-              <div className="space-y-2">
-                {result.recalledDetails.map((detail, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-start gap-2.5 bg-emerald-50 text-emerald-950 px-3.5 py-2.5 rounded-2xl border border-emerald-200/80 text-sm font-bold"
-                  >
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                    <span>{detail}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Omitted or Changed */}
-          {((result.omittedDetails && result.omittedDetails.length > 0) ||
-            (result.changedDetails && result.changedDetails.length > 0)) && (
-            <div className="bg-white rounded-3xl p-5 border-2 border-amber-100 shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <Shuffle className="w-5 h-5 text-amber-600" />
-                <h3 className="text-base font-black text-slate-800">
-                  أوجه الاختلاف وما أغفلته أو غيّرته:
-                </h3>
-              </div>
-              <div className="space-y-2">
-                {result.omittedDetails?.map((omitted, idx) => (
-                  <div
-                    key={`omitted-${idx}`}
-                    className="flex items-start gap-2.5 bg-amber-50/80 text-amber-950 px-3.5 py-2.5 rounded-2xl border border-amber-200/80 text-sm font-semibold"
-                  >
-                    <HelpCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                    <span>{omitted}</span>
-                  </div>
-                ))}
-                {result.changedDetails?.map((changed, idx) => (
-                  <div
-                    key={`changed-${idx}`}
-                    className="flex items-start gap-2.5 bg-blue-50/80 text-blue-950 px-3.5 py-2.5 rounded-2xl border border-blue-200/80 text-sm font-semibold"
-                  >
-                    <Shuffle className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                    <span>{changed}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Detailed Elements Analysis (Characters, Places, Sequence) */}
-          {(result.charactersAnalysis || result.placesAnalysis || result.sequenceAnalysis) && (
-            <div className="bg-white rounded-3xl p-5 border-2 border-amber-100 shadow-sm">
-              <h3 className="text-base font-black text-slate-800 mb-3">
-                تحليل عناصر القصة:
-              </h3>
-              <div className="space-y-2.5 text-xs sm:text-sm font-bold">
-                {result.charactersAnalysis && (
-                  <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                    <Users className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="text-indigo-900 font-black block mb-0.5">الشخصيات:</span>
-                      <span className="text-slate-700 font-medium">{result.charactersAnalysis}</span>
-                    </div>
-                  </div>
-                )}
-                {result.placesAnalysis && (
-                  <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                    <MapPin className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="text-rose-900 font-black block mb-0.5">الأماكن والبيئة:</span>
-                      <span className="text-slate-700 font-medium">{result.placesAnalysis}</span>
-                    </div>
-                  </div>
-                )}
-                {result.sequenceAnalysis && (
-                  <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                    <ListOrdered className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="text-teal-900 font-black block mb-0.5">تسلسل وترتيب الأحداث:</span>
-                      <span className="text-slate-700 font-medium">{result.sequenceAnalysis}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Strengths Card ("ما الذي تذكرته جيدًا؟" / "ملاحظات التذكر والسرد") */}
+      {/* Positive Highlights for the Child */}
       <div className="bg-white rounded-3xl p-5 border-2 border-amber-100 shadow-sm mb-6">
         <div className="flex items-center gap-2 mb-3">
           <CheckCircle2 className="w-5 h-5 text-teal-700" />
           <h3 className="text-lg font-black text-slate-800">
-            {isSufficient ? 'نقاط القوة المستخلصة من كلامك' : 'ملاحظات التذكر والسرد'}
+            {isSufficient ? 'أشياء رائعة تذكرتها! 👏' : 'ملاحظات التسجيل'}
           </h3>
         </div>
 
@@ -269,7 +144,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
         </div>
       </div>
 
-      {/* Encouragement Message ("رسالة ذاكرتك") */}
+      {/* Encouragement Voice Card */}
       <div className="bg-linear-to-tr from-amber-50 to-orange-50 rounded-3xl p-5 border-2 border-amber-200 shadow-xs mb-6 text-center">
         <div className="inline-flex items-center gap-1.5 text-xs font-black text-amber-800 mb-2">
           <Heart className="w-4 h-4 fill-rose-400 text-rose-500" />
@@ -303,18 +178,16 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
         </button>
       </div>
 
-      {/* Actions */}
-      <div className="space-y-3">
-        {/* Play Again */}
+      {/* Main Play Actions */}
+      <div className="space-y-3 mb-8">
         <button
           onClick={onPlayAgain}
           className="w-full py-4 px-6 rounded-2xl bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-extrabold text-xl shadow-lg shadow-amber-400/40 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
         >
           <RotateCcw className="w-6 h-6" />
-          <span>جولة جديدة</span>
+          <span>جولة جديدة 🎮</span>
         </button>
 
-        {/* Back Home */}
         <button
           onClick={onGoHome}
           className="w-full py-3.5 px-6 rounded-2xl bg-white hover:bg-amber-50 text-amber-950 font-bold text-base border-2 border-amber-200 shadow-2xs active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
@@ -323,6 +196,133 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
           <span>العودة للرئيسية</span>
         </button>
       </div>
+
+      {/* Parent / Educator Detailed Report (Collapsible Accordion) */}
+      {isSufficient && (
+        <div className="bg-slate-50 rounded-3xl border border-slate-200 overflow-hidden mb-6">
+          <button
+            onClick={() => setShowParentReport(!showParentReport)}
+            className="w-full p-4 flex items-center justify-between text-right cursor-pointer hover:bg-slate-100/80 transition-colors"
+          >
+            <div className="flex items-center gap-2.5">
+              <GraduationCap className="w-5 h-5 text-indigo-600" />
+              <div>
+                <h4 className="text-sm font-black text-slate-800">
+                  تقرير تحليلي لولي الأمر والمعلم 👨‍👩‍👧
+                </h4>
+                <p className="text-xs text-slate-500 font-medium">
+                  {showParentReport ? 'اضغط للإخفاء' : 'اضغط للاطلاع على التفاصيل الدلالية ومقارنة السرد'}
+                </p>
+              </div>
+            </div>
+            {showParentReport ? (
+              <ChevronUp className="w-5 h-5 text-slate-500" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-slate-500" />
+            )}
+          </button>
+
+          {showParentReport && (
+            <div className="p-4 pt-0 border-t border-slate-200/70 space-y-4">
+              {/* Detailed Sub Scores */}
+              <div className="grid grid-cols-3 gap-2 pt-3">
+                <div className="bg-white rounded-2xl p-2.5 text-center border border-slate-200/60 shadow-2xs">
+                  <span className="block text-[11px] font-bold text-slate-600 mb-1">
+                    الأحداث الرئيسية
+                  </span>
+                  <span className="text-base font-black text-indigo-900">
+                    {result.mainEventsScore}%
+                  </span>
+                </div>
+                <div className="bg-white rounded-2xl p-2.5 text-center border border-slate-200/60 shadow-2xs">
+                  <span className="block text-[11px] font-bold text-slate-600 mb-1">
+                    ترتيب الأحداث
+                  </span>
+                  <span className="text-base font-black text-indigo-900">
+                    {result.sequenceScore}%
+                  </span>
+                </div>
+                <div className="bg-white rounded-2xl p-2.5 text-center border border-slate-200/60 shadow-2xs">
+                  <span className="block text-[11px] font-bold text-slate-600 mb-1">
+                    التفاصيل
+                  </span>
+                  <span className="text-base font-black text-indigo-900">
+                    {result.detailsScore}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Recalled with quotes */}
+              {result.recalledDetails && result.recalledDetails.length > 0 && (
+                <div className="bg-white rounded-2xl p-3.5 border border-slate-200/60 shadow-2xs">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Sparkles className="w-4 h-4 text-emerald-600" />
+                    <span className="text-xs font-black text-slate-800">
+                      ما تذكره الطفل بالأمثلة:
+                    </span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {result.recalledDetails.map((detail, idx) => (
+                      <p key={idx} className="text-xs text-slate-700 font-medium">
+                        • {detail}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Omitted or Changed */}
+              {((result.omittedDetails && result.omittedDetails.length > 0) ||
+                (result.changedDetails && result.changedDetails.length > 0)) && (
+                <div className="bg-white rounded-2xl p-3.5 border border-slate-200/60 shadow-2xs">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Shuffle className="w-4 h-4 text-amber-600" />
+                    <span className="text-xs font-black text-slate-800">
+                      أوجه الاختلاف والتبديل في السرد:
+                    </span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {result.omittedDetails?.map((omitted, idx) => (
+                      <p key={`omitted-${idx}`} className="text-xs text-amber-900 font-medium">
+                        • غاب عن السرد: {omitted}
+                      </p>
+                    ))}
+                    {result.changedDetails?.map((changed, idx) => (
+                      <p key={`changed-${idx}`} className="text-xs text-blue-900 font-medium">
+                        • أعاد صياغته: {changed}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Detailed Elements Analysis */}
+              {(result.charactersAnalysis || result.placesAnalysis || result.sequenceAnalysis) && (
+                <div className="bg-white rounded-2xl p-3.5 border border-slate-200/60 shadow-2xs space-y-2">
+                  <span className="text-xs font-black text-slate-800 block mb-1">
+                    تحليل عناصر القصة:
+                  </span>
+                  {result.charactersAnalysis && (
+                    <p className="text-xs text-slate-700">
+                      <strong className="text-indigo-900">الشخصيات:</strong> {result.charactersAnalysis}
+                    </p>
+                  )}
+                  {result.placesAnalysis && (
+                    <p className="text-xs text-slate-700">
+                      <strong className="text-rose-900">الأماكن:</strong> {result.placesAnalysis}
+                    </p>
+                  )}
+                  {result.sequenceAnalysis && (
+                    <p className="text-xs text-slate-700">
+                      <strong className="text-teal-900">تسلسل الأحداث:</strong> {result.sequenceAnalysis}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
