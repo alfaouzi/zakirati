@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Mic, Square, AlertCircle, CheckCircle2, RotateCcw, Keyboard } from 'lucide-react';
 import { speechToTextService } from '../services/speechService';
+import { validateStoryContent } from '../services/contentValidator';
 import { SoundWave } from './SoundWave';
 
 interface RoundTwoScreenProps {
@@ -67,8 +68,9 @@ export const RoundTwoScreen: React.FC<RoundTwoScreenProps> = ({
     const finalTranscript = await speechToTextService.stopListening();
     const transcriptToUse = finalTranscript || recognizedTranscript;
 
-    if (!transcriptToUse.trim()) {
-      setErrorMessage('لم أستطع سماع القصة بوضوح. حاول مرة أخرى أو اكتبها بالأسفل.');
+    const validation = validateStoryContent(transcriptToUse);
+    if (!validation.isValid) {
+      setErrorMessage(validation.message);
       setIsRecorded(false);
       return;
     }
@@ -87,8 +89,9 @@ export const RoundTwoScreen: React.FC<RoundTwoScreenProps> = ({
 
   const handleCompareStories = () => {
     const textToSubmit = recognizedTranscript || manualText;
-    if (!textToSubmit.trim()) {
-      setErrorMessage('يرجى تسجيل القصة من ذاكرتك أولاً.');
+    const validation = validateStoryContent(textToSubmit);
+    if (!validation.isValid) {
+      setErrorMessage(validation.message);
       return;
     }
     onStoriesReadyForComparison(textToSubmit.trim());

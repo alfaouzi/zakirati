@@ -118,17 +118,31 @@ class GameViewModelTest {
 
         assertEquals(GameState.ROUND_ONE_RECORDED, viewModel.uiState.value.gameState)
         assertNotNull(viewModel.uiState.value.errorMessage)
-        assertTrue(viewModel.uiState.value.errorMessage!!.contains("احكِ لي المزيد"))
+        assertTrue(viewModel.uiState.value.errorMessage!!.contains("قصتك"))
 
         // Attempting to confirm and proceed to Round 2 must be blocked!
         viewModel.confirmRoundOne()
         assertEquals(GameState.ROUND_ONE_RECORDED, viewModel.uiState.value.gameState)
-        assertTrue(viewModel.uiState.value.errorMessage!!.contains("احكِ لي المزيد"))
+        assertTrue(viewModel.uiState.value.errorMessage!!.contains("قصتك"))
     }
 
     @Test
-    fun greetingOnlyTranscripts_produceInsufficientInformationResultWithoutFalsePraise() = runTest {
-        // Both transcripts contain only "السلام عليكم"
+    fun contentValidator_distinguishesGreetingUnclearAndStory() {
+        val emptyCheck = StoryTranscriptValidator.classify("")
+        val tooShortCheck = StoryTranscriptValidator.classify("أنا هنا")
+        val greetingCheck = StoryTranscriptValidator.classify("السلام عليكم ورحمة الله وبركاته")
+        val unclearCheck = StoryTranscriptValidator.classify("هاهاها يعني يعني يعني يعني")
+        val validStoryCheck = StoryTranscriptValidator.classify("ذهبت اليوم إلى المدرسة ولعبت مع صديقي")
+
+        assertEquals(StoryTranscriptValidator.ContentCategory.EMPTY_OR_TOO_SHORT, emptyCheck)
+        assertEquals(StoryTranscriptValidator.ContentCategory.EMPTY_OR_TOO_SHORT, tooShortCheck)
+        assertEquals(StoryTranscriptValidator.ContentCategory.GREETING, greetingCheck)
+        assertEquals(StoryTranscriptValidator.ContentCategory.UNCLEAR, unclearCheck)
+        assertEquals(StoryTranscriptValidator.ContentCategory.VALID_STORY, validStoryCheck)
+    }
+
+    @Test
+    fun greetingOnlyTranscripts_produceInsufficientInformationResultAndRequestsRetelling() = runTest {
         val greeting1 = "السلام عليكم"
         val greeting2 = "السلام عليكم ورحمة الله"
 
@@ -147,8 +161,8 @@ class GameViewModelTest {
             assertFalse(strength.contains("تسلسل الأحداث"))
         }
 
-        assertTrue(analysisResult.strengths[0].contains("لا تتوفر تفاصيل"))
-        assertTrue(analysisResult.encouragementMessage.contains("ترحيب"))
+        assertTrue(analysisResult.strengths[0].contains("لم تتوفر معلومات كافية"))
+        assertTrue(analysisResult.encouragementMessage.contains("إعادة السرد"))
     }
 
     @Test

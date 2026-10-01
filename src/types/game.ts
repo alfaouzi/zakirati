@@ -20,6 +20,12 @@ export interface StoryAnalysisResult {
   strengths: string[];
   encouragementMessage: string;
   isFallback?: boolean;
+  recalledDetails?: string[];
+  omittedDetails?: string[];
+  changedDetails?: string[];
+  charactersAnalysis?: string;
+  placesAnalysis?: string;
+  sequenceAnalysis?: string;
 }
 
 export interface SpeechRecognitionResultState {

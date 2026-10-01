@@ -6,8 +6,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -26,6 +29,8 @@ fun ResultScreen(
     onPlayAgain: () -> Unit,
     onGoHome: () -> Unit
 ) {
+    val isSufficient = result.overallScore > 0
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -34,8 +39,8 @@ fun ResultScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "نتيجة الجولة",
-            fontSize = 28.sp,
+            text = if (isSufficient) "مقارنة وتحليل الروايتين" else "نتيجة فحص التسجيل",
+            fontSize = 26.sp,
             fontWeight = FontWeight.Black,
             textAlign = TextAlign.Center
         )
@@ -56,7 +61,7 @@ fun ResultScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         // Prominent Score Card
         Card(
@@ -67,19 +72,19 @@ fun ResultScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
+                    .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     text = "${result.overallScore}%",
-                    fontSize = 56.sp,
+                    fontSize = 52.sp,
                     fontWeight = FontWeight.Black,
                     color = MaterialTheme.colorScheme.primary
                 )
 
                 Text(
-                    text = "مستوى التذكر",
-                    fontSize = 16.sp,
+                    text = "مستوى التذكر الكلي",
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Bold
                 )
 
@@ -96,7 +101,127 @@ fun ResultScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Recalled Details with Examples
+        if (isSufficient && result.recalledDetails.isNotEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "ما تذكرته بأمثلة من كلامك:",
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    result.recalledDetails.forEach { item ->
+                        Row(
+                            modifier = Modifier.padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(item, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // Omitted / Changed Details
+        if (isSufficient && (result.omittedDetails.isNotEmpty() || result.changedDetails.isNotEmpty())) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "أوجه الاختلاف وما أغفلته أو غيّرته:",
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    result.omittedDetails.forEach { item ->
+                        Row(
+                            modifier = Modifier.padding(vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(item, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        }
+                    }
+
+                    result.changedDetails.forEach { item ->
+                        Row(
+                            modifier = Modifier.padding(vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Info,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(item, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // Elements Analysis (Characters, Places, Sequence)
+        if (isSufficient && (result.charactersAnalysis.isNotBlank() || result.placesAnalysis.isNotBlank() || result.sequenceAnalysis.isNotBlank())) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "تحليل عناصر القصة:",
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Black
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (result.charactersAnalysis.isNotBlank()) {
+                        Text("• الشخصيات: ${result.charactersAnalysis}", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+                    if (result.placesAnalysis.isNotBlank()) {
+                        Text("• الأماكن: ${result.placesAnalysis}", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+                    if (result.sequenceAnalysis.isNotBlank()) {
+                        Text("• تسلسل الأحداث: ${result.sequenceAnalysis}", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
 
         // Strengths Card
         Card(
@@ -105,12 +230,12 @@ fun ResultScreen(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = if (result.overallScore > 0) "ما الذي تذكرته جيدًا؟" else "ملاحظات التذكر والسرد",
-                    fontSize = 18.sp,
+                    text = if (isSufficient) "نقاط القوة المستخلصة" else "ملاحظات التذكر والسرد",
+                    fontSize = 17.sp,
                     fontWeight = FontWeight.Black
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 result.strengths.forEach { item ->
                     Row(
@@ -118,19 +243,19 @@ fun ResultScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            Icons.Default.Check,
+                            Icons.Default.Star,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(item, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text(item, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Encouragement Card
         Card(
@@ -153,12 +278,12 @@ fun ResultScreen(
 
                 Text(
                     text = "\"${result.encouragementMessage}\"",
-                    fontSize = 18.sp,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.ExtraBold,
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 Button(
                     onClick = onSpeakMessage,
@@ -171,19 +296,19 @@ fun ResultScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         // Actions
         Button(
             onClick = onPlayAgain,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp),
+                .height(54.dp),
             shape = RoundedCornerShape(16.dp)
         ) {
             Icon(Icons.Default.Refresh, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("جولة جديدة", fontSize = 18.sp, fontWeight = FontWeight.Black)
+            Text("جولة جديدة", fontSize = 17.sp, fontWeight = FontWeight.Black)
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -192,7 +317,7 @@ fun ResultScreen(
             onClick = onGoHome,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp),
+                .height(48.dp),
             shape = RoundedCornerShape(16.dp)
         ) {
             Icon(Icons.Default.Home, contentDescription = null)

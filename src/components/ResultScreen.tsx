@@ -8,6 +8,12 @@ import {
   Home,
   Trophy,
   Heart,
+  Users,
+  MapPin,
+  ListOrdered,
+  Sparkles,
+  HelpCircle,
+  Shuffle,
 } from 'lucide-react';
 import { StoryAnalysisResult } from '../types/game';
 import { textToSpeechService } from '../services/ttsService';
@@ -28,7 +34,6 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
   const [isPlayingTts, setIsPlayingTts] = useState(false);
 
   useEffect(() => {
-    // Optionally auto-speak the encouraging message if sound is enabled
     if (soundEnabled && result.encouragementMessage) {
       handleSpeakMessage();
     }
@@ -62,6 +67,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
   };
 
   const stars = getStarCount(result.overallScore);
+  const isSufficient = result.overallScore > 0;
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6">
@@ -71,7 +77,9 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
           <Trophy className="w-4 h-4 text-amber-700" />
           <span>نتيجة الجولة</span>
         </span>
-        <h2 className="text-3xl font-black text-amber-950">أداء رائع لذاكرتك!</h2>
+        <h2 className="text-3xl font-black text-amber-950">
+          {isSufficient ? 'مقارنة وتحليل الروايتين' : 'نتيجة فحص التسجيل'}
+        </h2>
         {result.isFallback && (
           <div className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full">
             <span>تحليل محلي بديل (بدون اتصال بالإنترنت)</span>
@@ -85,7 +93,6 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
         <div className="absolute bottom-0 left-0 w-32 h-32 bg-yellow-100/50 rounded-full blur-2xl -ml-10 -mb-10" />
 
         <div className="relative z-10">
-          {/* Prominent Score Number */}
           <div className="text-6xl sm:text-7xl font-black text-amber-900 tracking-tight mb-2">
             {result.overallScore}
             <span className="text-3xl font-bold text-amber-600">%</span>
@@ -101,7 +108,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
               <Star
                 key={s}
                 className={`w-8 h-8 transition-transform ${
-                  s <= stars
+                  s <= stars && isSufficient
                     ? 'text-amber-400 fill-amber-400 drop-shadow-xs scale-110'
                     : 'text-slate-200 fill-slate-100'
                 }`}
@@ -141,12 +148,111 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
         </div>
       </div>
 
-      {/* Strengths Card ("ما الذي تذكرته جيدًا؟") */}
+      {/* Comparison Sections: What was remembered vs What was omitted/changed */}
+      {isSufficient && (
+        <div className="space-y-4 mb-6">
+          {/* Recalled with quotes */}
+          {result.recalledDetails && result.recalledDetails.length > 0 && (
+            <div className="bg-white rounded-3xl p-5 border-2 border-emerald-100 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles className="w-5 h-5 text-emerald-600" />
+                <h3 className="text-base font-black text-slate-800">
+                  ما تذكرته بأمثلة من كلامك:
+                </h3>
+              </div>
+              <div className="space-y-2">
+                {result.recalledDetails.map((detail, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-start gap-2.5 bg-emerald-50 text-emerald-950 px-3.5 py-2.5 rounded-2xl border border-emerald-200/80 text-sm font-bold"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <span>{detail}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Omitted or Changed */}
+          {((result.omittedDetails && result.omittedDetails.length > 0) ||
+            (result.changedDetails && result.changedDetails.length > 0)) && (
+            <div className="bg-white rounded-3xl p-5 border-2 border-amber-100 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <Shuffle className="w-5 h-5 text-amber-600" />
+                <h3 className="text-base font-black text-slate-800">
+                  أوجه الاختلاف وما أغفلته أو غيّرته:
+                </h3>
+              </div>
+              <div className="space-y-2">
+                {result.omittedDetails?.map((omitted, idx) => (
+                  <div
+                    key={`omitted-${idx}`}
+                    className="flex items-start gap-2.5 bg-amber-50/80 text-amber-950 px-3.5 py-2.5 rounded-2xl border border-amber-200/80 text-sm font-semibold"
+                  >
+                    <HelpCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <span>{omitted}</span>
+                  </div>
+                ))}
+                {result.changedDetails?.map((changed, idx) => (
+                  <div
+                    key={`changed-${idx}`}
+                    className="flex items-start gap-2.5 bg-blue-50/80 text-blue-950 px-3.5 py-2.5 rounded-2xl border border-blue-200/80 text-sm font-semibold"
+                  >
+                    <Shuffle className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                    <span>{changed}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Detailed Elements Analysis (Characters, Places, Sequence) */}
+          {(result.charactersAnalysis || result.placesAnalysis || result.sequenceAnalysis) && (
+            <div className="bg-white rounded-3xl p-5 border-2 border-amber-100 shadow-sm">
+              <h3 className="text-base font-black text-slate-800 mb-3">
+                تحليل عناصر القصة:
+              </h3>
+              <div className="space-y-2.5 text-xs sm:text-sm font-bold">
+                {result.charactersAnalysis && (
+                  <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <Users className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="text-indigo-900 font-black block mb-0.5">الشخصيات:</span>
+                      <span className="text-slate-700 font-medium">{result.charactersAnalysis}</span>
+                    </div>
+                  </div>
+                )}
+                {result.placesAnalysis && (
+                  <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <MapPin className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="text-rose-900 font-black block mb-0.5">الأماكن والبيئة:</span>
+                      <span className="text-slate-700 font-medium">{result.placesAnalysis}</span>
+                    </div>
+                  </div>
+                )}
+                {result.sequenceAnalysis && (
+                  <div className="flex items-start gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <ListOrdered className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="text-teal-900 font-black block mb-0.5">تسلسل وترتيب الأحداث:</span>
+                      <span className="text-slate-700 font-medium">{result.sequenceAnalysis}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Strengths Card ("ما الذي تذكرته جيدًا؟" / "ملاحظات التذكر والسرد") */}
       <div className="bg-white rounded-3xl p-5 border-2 border-amber-100 shadow-sm mb-6">
         <div className="flex items-center gap-2 mb-3">
           <CheckCircle2 className="w-5 h-5 text-teal-700" />
           <h3 className="text-lg font-black text-slate-800">
-            ما الذي تذكرته جيدًا؟
+            {isSufficient ? 'نقاط القوة المستخلصة من كلامك' : 'ملاحظات التذكر والسرد'}
           </h3>
         </div>
 

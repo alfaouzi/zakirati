@@ -1,29 +1,11 @@
 import { StoryAnalysisResult } from '../types/game';
+import { validateStoryContent } from './contentValidator';
 
 export interface IStoryAnalysisService {
   analyzeStories(
     firstStory: string,
     secondStory: string
   ): Promise<StoryAnalysisResult>;
-}
-
-const GREETING_WORDS = new Set([
-  'سلام', 'السلام', 'عليكم', 'وعليكم', 'ورحمة', 'الله', 'وبركاته',
-  'مرحبا', 'مرحباً', 'اهلا', 'أهلا', 'أهلاً', 'صباح', 'الخير', 'مساء',
-  'هاي', 'الو', 'ألو', 'شكرا', 'شكراً', 'نعم', 'لا', 'ايوه', 'ايوة',
-  'بسم', 'الرحمن', 'الرحيم', 'تمام', 'اوكي', 'أوكي', 'هلو', 'هلا'
-]);
-
-function isInsufficientTranscript(text: string): boolean {
-  const words = text
-    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-
-  if (words.length < 4) return true;
-  const nonGreetings = words.filter(w => !GREETING_WORDS.has(w));
-  return nonGreetings.length < 3;
 }
 
 export class RemoteStoryAnalysisService implements IStoryAnalysisService {
@@ -64,7 +46,6 @@ export class RemoteStoryAnalysisService implements IStoryAnalysisService {
       return this.validateAndSanitize(data);
     } catch (err: any) {
       console.warn('Remote story analysis failed, trying fallback endpoint...', err);
-      // Try secondary endpoint '/analyze-story' if '/api/analyze-story' failed
       try {
         const altResponse = await fetch('/analyze-story', {
           method: 'POST',
@@ -121,6 +102,12 @@ export class RemoteStoryAnalysisService implements IStoryAnalysisService {
       strengths,
       encouragementMessage,
       isFallback: Boolean(data.isFallback),
+      recalledDetails: Array.isArray(data.recalledDetails) ? data.recalledDetails.map(String).slice(0, 3) : [],
+      omittedDetails: Array.isArray(data.omittedDetails) ? data.omittedDetails.map(String).slice(0, 3) : [],
+      changedDetails: Array.isArray(data.changedDetails) ? data.changedDetails.map(String).slice(0, 3) : [],
+      charactersAnalysis: typeof data.charactersAnalysis === 'string' ? data.charactersAnalysis : '',
+      placesAnalysis: typeof data.placesAnalysis === 'string' ? data.placesAnalysis : '',
+      sequenceAnalysis: typeof data.sequenceAnalysis === 'string' ? data.sequenceAnalysis : '',
     };
   }
 }
@@ -142,16 +129,25 @@ export class MockStoryAnalysisService implements IStoryAnalysisService {
       throw new Error('القصة الثانية فارغة');
     }
 
-    if (isInsufficientTranscript(trimmed1) || isInsufficientTranscript(trimmed2)) {
+    const check1 = validateStoryContent(trimmed1);
+    const check2 = validateStoryContent(trimmed2);
+
+    if (!check1.isValid || !check2.isValid) {
+      const reason = !check1.isValid ? check1.message : check2.message;
       return {
         overallScore: 0,
         mainEventsScore: 0,
         sequenceScore: 0,
         detailsScore: 0,
-        strengths: ['لا تتوفر تفاصيل أو أحداث كافية في النصين لتقييم التذكر'],
-        encouragementMessage:
-          'النص المسجل يحتوي على ترحيب أو كلمات مقتضبة فقط، ولا توجد قصة مكتملة لتقييمها. شاركني قصة تحتوي على أحداث وأشخاص لنكتشف ما تذكرته!',
+        strengths: ['لم تتوفر معلومات كافية في التسجيل لإجراء تقييم التذكر'],
+        encouragementMessage: `${reason} يُرجى إعادة السرد وحكاية قصة واضحة لنتمكن معاً من اكتشاف ما استطعت تذكره!`,
         isFallback: true,
+        recalledDetails: [],
+        omittedDetails: ['لم يتم تسجيل قصة كافية للمقارنة'],
+        changedDetails: [],
+        charactersAnalysis: 'لا توجد شخصيات محددة لتحليلها.',
+        placesAnalysis: 'لم يتم ذكر أماكن في النص.',
+        sequenceAnalysis: 'لا يوجد تسلسل أحداث كافٍ.',
       };
     }
 
@@ -159,7 +155,10 @@ export class MockStoryAnalysisService implements IStoryAnalysisService {
     const words2 = trimmed2.split(/\s+/).filter(Boolean);
 
     const set1 = new Set(words1);
-    const matched = words2.filter(w => set1.has(w));
+    const matched = Array.from(new Set(words2.filter((w) => set1.has(w))));
+    const set2 = new Set(words2);
+    const omitted = Array.from(new Set(words1.filter((w) => !set2.has(w))));
+
     const ratio = words1.length > 0 ? matched.length / words1.length : 0;
 
     const overallScore = Math.round(ratio * 100);
@@ -168,24 +167,47 @@ export class MockStoryAnalysisService implements IStoryAnalysisService {
     const detailsScore = Math.round((ratio * 0.95 + 0.05) * 100);
 
     const strengths: string[] = [];
+    const recalledDetails: string[] = [];
+    const omittedDetails: string[] = [];
+    const changedDetails: string[] = [];
+
     if (matched.length > 0) {
-      const sample = Array.from(new Set(matched)).slice(0, 2).join('، ');
+      const sample = matched.slice(0, 3).map((w) => `"${w}"`).join(' و ');
       strengths.push(`تذكرت عناصر رئيسية من القصة الأولى (${sample})`);
+      recalledDetails.push(`تذكرت أحداثاً وعناصر مثل: ${sample}`);
     } else {
       strengths.push('سردت القصة الثانية بأسلوب مختلف عن الأولى');
     }
 
+    if (omitted.length > 0) {
+      const omittedSample = omitted.slice(0, 2).map((w) => `"${w}"`).join(' و ');
+      omittedDetails.push(`أغفلت بعض الكلمات التي ذكرتها أولاً مثل: ${omittedSample}`);
+    } else {
+      omittedDetails.push('لم تغفل تفاصيل جوهرية من الرواية الأولى');
+    }
+
     if (words2.length >= Math.floor(words1.length * 0.6)) {
       strengths.push('أعدت سرد القصة بحجم وتفاصيل متقاربة');
+      changedDetails.push('استخدمت أسلوبك الخاص للتعبير عن نفس المعنى العام');
     } else {
       strengths.push('لخصت الفكرة باختصار في الرواية الثانية');
+      changedDetails.push('اخترت تلخيص القصة بدلاً من ذكر كل التفاصيل السابقة');
     }
+
+    const charactersAnalysis = matched.length > 0
+      ? 'تم استرجاع الإشارات إلى الشخصيات بدقة ملحوظة.'
+      : 'ظهر اختلاف في الإشارة إلى الشخصيات بين الروايتين.';
+
+    const placesAnalysis = 'تم استرجاع البيئة العامة للأحداث بأسلوب شفهي جميل.';
+    const sequenceAnalysis = words2.length >= Math.floor(words1.length * 0.6)
+      ? 'تسلسل الأحداث توافق مع البداية والوسط في القصة الأولى.'
+      : 'اقتصر تسلسل الأحداث على الفكرة الأساسية بشكل موجز.';
 
     let encouragementMessage = 'أحسنت! واصل تدريب ذاكرتك بحكاية القصص.';
     if (overallScore >= 80) {
-      encouragementMessage = 'رائع ومبهر يا بطل! تذكرت معظم تفاصيل وأحداث قصتك الأولى بدقة.';
+      encouragementMessage = 'رائع ومبهر يا بطل! تذكرت معظم تفاصيل وأحداث قصتك الأولى بدقة وبراعة.';
     } else if (overallScore >= 50) {
-      encouragementMessage = 'أحسنت! تذكرت عدة تفاصيل أساسية من قصتك الأولى.';
+      encouragementMessage = 'أحسنت! تذكرت عدة تفاصيل أساسية من قصتك الأولى، ومحاولتك تدل على تركيز رائع.';
     } else {
       encouragementMessage = 'محاولة جميلة في السرد! اختلفت الرواية الثانية عن الأولى، وفي المرة القادمة ستتذكر أكثر.';
     }
@@ -198,6 +220,12 @@ export class MockStoryAnalysisService implements IStoryAnalysisService {
       strengths: strengths.slice(0, 3),
       encouragementMessage,
       isFallback: true,
+      recalledDetails,
+      omittedDetails,
+      changedDetails,
+      charactersAnalysis,
+      placesAnalysis,
+      sequenceAnalysis,
     };
   }
 }

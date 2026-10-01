@@ -1,6 +1,7 @@
 /**
  * Speech-To-Text Service Abstraction
- * Handles speech recognition in Arabic with graceful error handling and privacy-preserving audio cleanup.
+ * Handles continuous speech recognition in Arabic with graceful error handling and privacy-preserving audio cleanup.
+ * Keeps recording active across natural pauses/silences until user explicitly presses Stop.
  */
 
 export interface SpeechToTextCallbacks {
@@ -10,7 +11,6 @@ export interface SpeechToTextCallbacks {
   onEnd?: () => void;
 }
 
-// Window interface augmentation for browser speech recognition
 interface IWindow extends Window {
   SpeechRecognition?: any;
   webkitSpeechRecognition?: any;
@@ -47,7 +47,7 @@ export class SpeechToTextService {
           this.recognition = new SpeechRecognitionClass();
           this.recognition.continuous = true;
           this.recognition.interimResults = true;
-          this.recognition.lang = 'ar-SA'; // Default to Arabic
+          this.recognition.lang = 'ar-SA';
         } catch (e) {
           console.warn('[SpeechDiag] SpeechRecognition initialization error:', e);
           this.isSupported = false;
@@ -67,12 +67,8 @@ export class SpeechToTextService {
 
   public async startListening(callbacks: SpeechToTextCallbacks): Promise<void> {
     console.log('[SpeechDiag] startListening() called.');
-    console.log(`[SpeechDiag] Config: isSupported=${this.isSupported}, implementation=${this.implementationName}`);
-    console.log(`[SpeechDiag] Config: lang=${this.recognition?.lang}, continuous=${this.recognition?.continuous}, interimResults=${this.recognition?.interimResults}`);
 
-    // If a previous stop operation is still finishing its lifecycle, wait for it
     if (this.stopPromise) {
-      console.log('[SpeechDiag] Previous stopPromise is still pending. Awaiting completion before start...');
       try {
         await this.stopPromise;
       } catch (e) {
@@ -80,9 +76,7 @@ export class SpeechToTextService {
       }
     }
 
-    // Ensure any previously active recognition instance is stopped before starting a new one
     if (this.isRecognitionActive) {
-      console.log('[SpeechDiag] Recognition is still active from prior run. Stopping active recognition...');
       try {
         await this.stopListening();
       } catch (e) {
@@ -90,17 +84,12 @@ export class SpeechToTextService {
       }
     }
 
-    // Advance session ID to invalidate any stale events from past sessions
     const sessionId = ++this.currentSessionId;
-    console.log(`[SpeechDiag] Session ${sessionId} started.`);
-
+    this.isCurrentlyListening = true;
     this.currentTranscript = '';
     this.lastInterimTranscript = '';
     this.audioChunks = [];
 
-    // MediaRecorder / getUserMedia capture is temporarily disabled for this test
-    // so SpeechRecognition is the only component accessing the microphone hardware.
-    console.log('[SpeechDiag] MediaRecorder capture is disabled for this test (SpeechRecognition has exclusive microphone access).');
     if (this.mediaRecorder) {
       try {
         if (this.mediaRecorder.state !== 'inactive') {
@@ -120,29 +109,19 @@ export class SpeechToTextService {
       return;
     }
 
-    // Ensure recognition settings are maintained
     this.recognition.continuous = true;
     this.recognition.interimResults = true;
     this.recognition.lang = 'ar-SA';
 
     this.recognition.onstart = () => {
       console.log(`[SpeechDiag] recognition.onstart fired for session ${sessionId}.`);
-      if (this.currentSessionId !== sessionId) {
-        console.warn(`[SpeechDiag] Ignoring onstart from stale session ${sessionId} (current: ${this.currentSessionId}).`);
-        return;
-      }
-      this.isCurrentlyListening = true;
+      if (this.currentSessionId !== sessionId) return;
       this.isRecognitionActive = true;
       callbacks.onStart?.();
     };
 
     this.recognition.onresult = (event: any) => {
-      if (this.currentSessionId !== sessionId) {
-        console.warn(`[SpeechDiag] Ignoring onresult from stale session ${sessionId} (current: ${this.currentSessionId}).`);
-        return;
-      }
-
-      console.log(`[SpeechDiag] recognition.onresult fired for session ${sessionId}. resultIndex=${event.resultIndex}, totalResults=${event.results.length}`);
+      if (this.currentSessionId !== sessionId) return;
 
       let interimTranscript = '';
       let finalTranscript = '';
@@ -151,8 +130,6 @@ export class SpeechToTextService {
         const resultItem = event.results[i];
         const isFinal = Boolean(resultItem?.isFinal);
         const transcriptPart = resultItem?.[0]?.transcript || '';
-        const confidence = resultItem?.[0]?.confidence;
-        console.log(`[SpeechDiag] result[${i}]: isFinal=${isFinal}, confidence=${confidence}, text="${transcriptPart}"`);
 
         if (isFinal) {
           finalTranscript += transcriptPart + ' ';
@@ -162,25 +139,24 @@ export class SpeechToTextService {
       }
 
       if (finalTranscript) {
-        this.currentTranscript = (this.currentTranscript + ' ' + finalTranscript).trim();
+        const cleaned = finalTranscript.trim();
+        // Prevent duplicate appending if the segment was already added
+        if (!this.currentTranscript.endsWith(cleaned)) {
+          this.currentTranscript = (this.currentTranscript + ' ' + cleaned).trim();
+        }
       }
 
       this.lastInterimTranscript = interimTranscript.trim();
       const displayTranscript = (this.currentTranscript + ' ' + interimTranscript).trim();
-      console.log(`[SpeechDiag] Accumulated currentTranscript="${this.currentTranscript}", interim="${this.lastInterimTranscript}", display="${displayTranscript}"`);
       callbacks.onResult?.(displayTranscript, Boolean(finalTranscript));
     };
 
     this.recognition.onerror = (event: any) => {
-      if (this.currentSessionId !== sessionId) {
-        console.warn(`[SpeechDiag] Ignoring onerror from stale session ${sessionId}.`);
-        return;
-      }
-      console.warn(`[SpeechDiag] recognition.onerror fired. error="${event.error}", message="${event.message || ''}"`);
+      if (this.currentSessionId !== sessionId) return;
+      console.warn(`[SpeechDiag] recognition.onerror fired. error="${event.error}"`);
 
-      // Aborted by stop() or intentional cancel
-      if (event.error === 'aborted') {
-        console.log('[SpeechDiag] Recognition aborted intentionally.');
+      // Normal silence timeout or user abort: do NOT terminate user session
+      if (event.error === 'no-speech' || event.error === 'aborted') {
         return;
       }
 
@@ -188,89 +164,93 @@ export class SpeechToTextService {
 
       if (event.error === 'not-allowed' || event.error === 'permission-denied') {
         friendlyMessage = 'يحتاج التطبيق إلى استخدام الميكروفون حتى تتمكن من تسجيل قصتك.';
+        this.isCurrentlyListening = false;
+        callbacks.onError?.(friendlyMessage);
       } else if (event.error === 'network') {
-        friendlyMessage = 'تعذر الاتصال بخدمة التعرف على الصوت. تحقق من اتصال الإنترنت وحاول مرة أخرى.';
-      } else if (event.error === 'no-speech') {
-        friendlyMessage = 'لم أسمع أي كلام. اضغط على الميكروفون وابدأ بسرد القصة!';
+        // Transient network issue: do not drop current transcript
       }
-
-      callbacks.onError?.(friendlyMessage);
     };
 
     this.recognition.onend = () => {
       console.log(`[SpeechDiag] recognition.onend fired for session ${sessionId}.`);
       this.isRecognitionActive = false;
-      if (this.currentSessionId !== sessionId) {
-        console.warn(`[SpeechDiag] Ignoring onend from stale session ${sessionId} (current: ${this.currentSessionId}).`);
+
+      if (this.currentSessionId !== sessionId) return;
+
+      // If user requested stop, finalize and resolve
+      if (this.pendingStopResolver || !this.isCurrentlyListening) {
+        this.isCurrentlyListening = false;
+        callbacks.onEnd?.();
+        if (this.pendingStopResolver) {
+          this.pendingStopResolver();
+        }
         return;
       }
-      this.isCurrentlyListening = false;
-      callbacks.onEnd?.();
 
-      // Trigger resolution for stopListening if pending
-      if (this.pendingStopResolver) {
-        console.log('[SpeechDiag] Invoking pendingStopResolver from onend.');
-        this.pendingStopResolver();
+      // If user has NOT pressed stop, this onend was caused by silence or browser utterance chunking.
+      // Automatically restart recognition to guarantee continuous recording!
+      if (this.isCurrentlyListening) {
+        try {
+          this.isRecognitionActive = true;
+          this.recognition.start();
+          console.log('[SpeechDiag] Automatically restarted recognition after silence.');
+        } catch (e) {
+          setTimeout(() => {
+            if (this.isCurrentlyListening && !this.pendingStopResolver) {
+              try {
+                this.isRecognitionActive = true;
+                this.recognition.start();
+              } catch (_) {}
+            }
+          }, 150);
+        }
       }
     };
 
     try {
-      console.log(`[SpeechDiag] Calling recognition.start() for session ${sessionId}...`);
       this.isRecognitionActive = true;
       this.recognition.start();
-      console.log('[SpeechDiag] recognition.start() completed without throwing.');
     } catch (err: any) {
       console.warn('[SpeechDiag] recognition.start() exception:', err);
-      // Already running or failed to initialize
       this.isCurrentlyListening = true;
       callbacks.onStart?.();
     }
   }
 
   public stopListening(): Promise<string> {
-    console.log(`[SpeechDiag] stopListening() called. isCurrentlyListening=${this.isCurrentlyListening}, isRecognitionActive=${this.isRecognitionActive}`);
-    console.log(`[SpeechDiag] Transcript immediately before stopping: "${this.currentTranscript}" (interim: "${this.lastInterimTranscript}")`);
+    console.log(`[SpeechDiag] stopListening() called.`);
 
-    // If a stop operation is already ongoing, reuse its promise
     if (this.stopPromise) {
-      console.log('[SpeechDiag] stopListening() re-using existing pending stopPromise.');
       return this.stopPromise;
     }
 
     this.isCurrentlyListening = false;
 
-    // Immediately stop microphone stream tracks & MediaRecorder if any exist
     if (this.mediaRecorder) {
       try {
         if (this.mediaRecorder.state !== 'inactive') {
           this.mediaRecorder.stop();
         }
         this.mediaRecorder.stream?.getTracks().forEach((track) => track.stop());
-        console.log('[SpeechDiag] MediaRecorder and microphone tracks stopped.');
       } catch (e) {
         console.warn('[SpeechDiag] MediaRecorder stop error:', e);
       }
       this.mediaRecorder = null;
     }
 
-    // If speech recognition is not supported or not active, resolve immediately
     if (!this.isSupported || !this.recognition || !this.isRecognitionActive) {
-      console.log('[SpeechDiag] SpeechRecognition inactive or unsupported. Resolving stop immediately.');
       this.isRecognitionActive = false;
       const result = (this.currentTranscript || this.lastInterimTranscript).trim();
       this.cleanupTemporaryAudio();
-      console.log(`[SpeechDiag] Stop Promise resolved immediately with final transcript: "${result}"`);
       return Promise.resolve(result);
     }
 
     this.stopPromise = new Promise<string>((resolve) => {
       let resolved = false;
 
-      const finish = (usedTimeout: boolean) => {
+      const finish = () => {
         if (resolved) return;
         resolved = true;
-
-        console.log(`[SpeechDiag] stopListening finish() called. usedFallbackTimeout=${usedTimeout}`);
 
         if (this.stopTimeoutId) {
           clearTimeout(this.stopTimeoutId);
@@ -284,36 +264,25 @@ export class SpeechToTextService {
 
         const result = (this.currentTranscript || this.lastInterimTranscript).trim();
         this.cleanupTemporaryAudio();
-        console.log(`[SpeechDiag] Stop Promise resolving with final transcript: "${result}". (Used fallback timeout: ${usedTimeout})`);
         resolve(result);
       };
 
-      this.pendingStopResolver = () => finish(false);
+      this.pendingStopResolver = () => finish();
 
-      // Safe fallback timeout (2.5 seconds) so Promise can never remain pending indefinitely
       this.stopTimeoutId = setTimeout(() => {
-        console.warn('[SpeechDiag] Safe 2.5s fallback timeout triggered (onend did not fire within 2.5s).');
-        finish(true);
-      }, 2500);
+        finish();
+      }, 1500);
 
       try {
-        console.log('[SpeechDiag] Calling recognition.stop()...');
-        // Calling stop() allows speech recognition to flush remaining buffered audio and fire final onresult then onend
         this.recognition.stop();
-        console.log('[SpeechDiag] recognition.stop() called successfully.');
-        console.log(`[SpeechDiag] Transcript immediately after stop() call: "${this.currentTranscript}"`);
       } catch (e) {
-        console.warn('[SpeechDiag] recognition.stop() error exception:', e);
-        finish(false);
+        finish();
       }
     });
 
     return this.stopPromise;
   }
 
-  /**
-   * Deletes temporary audio data from memory to honor the privacy requirement.
-   */
   public cleanupTemporaryAudio(): void {
     this.audioChunks = [];
     if (this.mediaRecorder) {
@@ -322,9 +291,7 @@ export class SpeechToTextService {
           this.mediaRecorder.stop();
         }
         this.mediaRecorder.stream?.getTracks().forEach((track) => track.stop());
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) {}
     }
     this.mediaRecorder = null;
   }

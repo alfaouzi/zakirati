@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Mic, Square, ArrowLeft, AlertCircle, Lightbulb, CheckCircle2, Keyboard } from 'lucide-react';
 import { speechToTextService } from '../services/speechService';
+import { validateStoryContent } from '../services/contentValidator';
 import { SoundWave } from './SoundWave';
 
 interface RoundOneScreenProps {
@@ -73,8 +74,9 @@ export const RoundOneScreen: React.FC<RoundOneScreenProps> = ({
     const finalTranscript = await speechToTextService.stopListening();
     const transcriptToUse = finalTranscript || recognizedTranscript;
 
-    if (!transcriptToUse.trim()) {
-      setErrorMessage('لم أستطع سماع القصة بوضوح. حاول مرة أخرى أو اكتبها بالأسفل.');
+    const validation = validateStoryContent(transcriptToUse);
+    if (!validation.isValid) {
+      setErrorMessage(validation.message);
       setIsRecorded(false);
       return;
     }
@@ -93,8 +95,9 @@ export const RoundOneScreen: React.FC<RoundOneScreenProps> = ({
 
   const handleProceed = () => {
     const textToSubmit = recognizedTranscript || manualText;
-    if (!textToSubmit.trim()) {
-      setErrorMessage('يرجى تسجيل القصة أولاً أو اختيار قصة تجريبية.');
+    const validation = validateStoryContent(textToSubmit);
+    if (!validation.isValid) {
+      setErrorMessage(validation.message);
       return;
     }
     onStoryCompleted(textToSubmit.trim());

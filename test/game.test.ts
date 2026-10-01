@@ -1,9 +1,11 @@
 /**
  * Unit tests for "صدى حكايتي" (My Memory Tells)
- * Validates domain rules, scores, service fallbacks, state transitions, greeting rejection, and grounded AI analysis.
+ * Validates domain rules, scores, service fallbacks, state transitions,
+ * content verification (empty, greeting, unclear, valid story), and honest retelling requests.
  */
 
 import { MockStoryAnalysisService, RemoteStoryAnalysisService } from '../src/services/aiService';
+import { validateStoryContent } from '../src/services/contentValidator';
 import { StoryAnalysisResult } from '../src/types/game';
 
 let passed = 0;
@@ -149,32 +151,60 @@ async function runTests() {
     '12. Request size limit protection detects and rejects oversized payload (>100kb)'
   );
 
-  // Test 13: Greeting-only transcript produces insufficient-information result (0 score, no false claims)
-  const greetingResult = await mockService.analyzeStories('السلام عليكم', 'السلام عليكم ورحمة الله');
+  // Test 13: Content Validator distinguishes Empty vs Greeting vs Unclear vs Valid Story
+  const emptyCheck = validateStoryContent('');
+  const tooShortCheck = validateStoryContent('أنا هنا');
+  const greetingCheck = validateStoryContent('السلام عليكم ورحمة الله وبركاته يا أصدقاء');
+  const unclearCheck = validateStoryContent('هاهاها اممم يعني يعني يعني');
+  const validStoryCheck = validateStoryContent('ذهبت اليوم إلى المدرسة ولعبت كرة القدم مع أحمد');
+
   assert(
-    greetingResult.overallScore === 0 &&
-      greetingResult.mainEventsScore === 0 &&
-      greetingResult.strengths[0].includes('لا تتوفر تفاصيل'),
-    '13. Greeting-only transcripts produce an honest insufficient-information result with score 0'
+    !emptyCheck.isValid && emptyCheck.category === 'EMPTY_OR_TOO_SHORT',
+    '13a. Empty recordings classified as EMPTY_OR_TOO_SHORT'
+  );
+  assert(
+    !tooShortCheck.isValid && tooShortCheck.category === 'EMPTY_OR_TOO_SHORT',
+    '13b. Too short recordings classified as EMPTY_OR_TOO_SHORT'
+  );
+  assert(
+    !greetingCheck.isValid && greetingCheck.category === 'GREETING',
+    '13c. Greetings clearly distinguished and classified as GREETING'
+  );
+  assert(
+    !unclearCheck.isValid && unclearCheck.category === 'UNCLEAR',
+    '13d. Unclear / filler speech clearly distinguished and classified as UNCLEAR'
+  );
+  assert(
+    validStoryCheck.isValid && validStoryCheck.category === 'VALID_STORY',
+    '13e. Genuine storytelling recognized as VALID_STORY'
   );
 
-  // Test 14: AI analysis cannot claim details (places, people) unsupported by the supplied transcripts
-  const hasFabricatedPraise = greetingResult.strengths.some(
-    s => s.includes('المكان') || s.includes('الأشخاص') || s.includes('تسلسل الأحداث')
+  // Test 14: Insufficient information triggers retelling request instead of fabricating strengths
+  const greetingAnalysis = await mockService.analyzeStories('السلام عليكم', 'وعليكم السلام ورحمة الله');
+  assert(
+    greetingAnalysis.overallScore === 0 &&
+      greetingAnalysis.strengths[0].includes('لم تتوفر معلومات كافية') &&
+      greetingAnalysis.encouragementMessage.includes('إعادة السرد'),
+    '14. Insufficient information requests retelling and sets scores to 0 without fabricating strengths'
+  );
+
+  // Test 15: AI analysis strictly rejects fabricated praise regarding places or persons
+  const hasFabricatedPraise = greetingAnalysis.strengths.some(
+    (s) => s.includes('المكان') || s.includes('الأشخاص') || s.includes('تسلسل الأحداث')
   );
   assert(
     !hasFabricatedPraise,
-    '14. Greeting-only analysis strictly rejects fabricated praise regarding places, people, or sequence'
+    '15. Analysis strictly refuses to invent places, persons, or event sequence for insufficient stories'
   );
 
-  // Test 15: Valid, sufficiently detailed transcripts still reach existing comparison workflow
+  // Test 16: Valid detailed transcripts still reach comparison workflow
   const validComparison = await mockService.analyzeStories(
     'خرجت البطة الصغيرة إلى البحيرة لتسبح.',
     'ذهبت البطة إلى البحيرة وسبحت في الماء.'
   );
   assert(
     validComparison.overallScore > 0 && validComparison.strengths.length > 0,
-    '15. Valid, detailed transcripts successfully compare and return grounded evaluation'
+    '16. Valid, detailed transcripts successfully compare and return grounded evaluation'
   );
 
   console.log(`\nTests Summary: ${passed} passed, ${failed} failed.\n`);

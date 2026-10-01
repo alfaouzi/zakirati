@@ -33,6 +33,12 @@ interface StoryAnalysisResponse {
   strengths: string[];
   encouragementMessage: string;
   isFallback: boolean;
+  recalledDetails?: string[];
+  omittedDetails?: string[];
+  changedDetails?: string[];
+  charactersAnalysis?: string;
+  placesAnalysis?: string;
+  sequenceAnalysis?: string;
 }
 
 // Helper to sanitize score to range 0..100
@@ -44,20 +50,90 @@ function clampScore(score: unknown, defaultVal: number): number {
 const GREETING_WORDS = new Set([
   'سلام', 'السلام', 'عليكم', 'وعليكم', 'ورحمة', 'الله', 'وبركاته',
   'مرحبا', 'مرحباً', 'اهلا', 'أهلا', 'أهلاً', 'صباح', 'الخير', 'مساء',
-  'هاي', 'الو', 'ألو', 'شكرا', 'شكراً', 'نعم', 'لا', 'ايوه', 'ايوة',
-  'بسم', 'الرحمن', 'الرحيم', 'تمام', 'اوكي', 'أوكي', 'هلو', 'هلا'
+  'النور', 'شكرا', 'شكراً', 'هاي', 'هلو', 'الو', 'ألو', 'كيف', 'حالك',
+  'الحال', 'تمام', 'بخير', 'هلا', 'عافية', 'يعطيك', 'العافية', 'يسلمو',
+  'بسم', 'الرحمن', 'الرحيم', 'يا', 'مية', 'أهلين', 'اهلين', 'أصدقاء', 'اصدقاء'
 ]);
 
-function isInsufficientTranscript(text: string): boolean {
-  const words = text
+const FILLER_SOUNDS = new Set([
+  'اممم', 'امممم', 'ممم', 'اها', 'اه', 'اووه', 'اوو', 'اييي',
+  'هاها', 'هاهاها', 'هههه', 'ههه', 'بلابلا', 'يعني', 'شو', 'ايش'
+]);
+
+type ContentCategory = 'EMPTY_OR_TOO_SHORT' | 'GREETING' | 'UNCLEAR' | 'VALID_STORY';
+
+interface TranscriptCheck {
+  isValid: boolean;
+  category: ContentCategory;
+  retellMessage: string;
+}
+
+function checkTranscriptContent(text: string): TranscriptCheck {
+  const trimmed = (text || '').trim();
+  if (!trimmed) {
+    return {
+      isValid: false,
+      category: 'EMPTY_OR_TOO_SHORT',
+      retellMessage: 'لم نتمكن من سماع تسجيل كافٍ. يُرجى إعادة السرد وحكاية قصة واضحة.',
+    };
+  }
+
+  const words = trimmed
     .replace(/[^\p{L}\p{N}\s]/gu, ' ')
     .trim()
     .split(/\s+/)
     .filter(Boolean);
 
-  if (words.length < 4) return true;
-  const nonGreetings = words.filter(w => !GREETING_WORDS.has(w));
-  return nonGreetings.length < 3;
+  if (words.length < 3) {
+    return {
+      isValid: false,
+      category: 'EMPTY_OR_TOO_SHORT',
+      retellMessage: 'التسجيل قصير جداً ولا يحتوي على أحداث. يُرجى إعادة السرد لسرد قصة كاملة.',
+    };
+  }
+
+  const uniqueWords = new Set(words.map(w => w.toLowerCase()));
+  if (uniqueWords.size <= 2 && words.length >= 3) {
+    return {
+      isValid: false,
+      category: 'UNCLEAR',
+      retellMessage: 'الكلام مكرر أو غير واضح بما يكفي لفهم القصة. يُرجى إعادة السرد بوضوح.',
+    };
+  }
+
+  const fillerCount = words.filter(w => FILLER_SOUNDS.has(w)).length;
+  if (fillerCount / words.length > 0.5) {
+    return {
+      isValid: false,
+      category: 'UNCLEAR',
+      retellMessage: 'الكلام غير واضح بما يكفي للمقارنة. يُرجى إعادة السرد بهدوء.',
+    };
+  }
+
+  const nonGreetings = words.filter(w => !GREETING_WORDS.has(w) && !FILLER_SOUNDS.has(w));
+  const greetingCount = words.filter(w => GREETING_WORDS.has(w)).length;
+
+  if (nonGreetings.length < 2 || greetingCount / words.length >= 0.5) {
+    return {
+      isValid: false,
+      category: 'GREETING',
+      retellMessage: 'التسجيل يحتوي على تحية ومجاملة فقط وليس حكاية. يُرجى إعادة السرد وحكاية قصة حدثت معك.',
+    };
+  }
+
+  if (nonGreetings.length < 3) {
+    return {
+      isValid: false,
+      category: 'EMPTY_OR_TOO_SHORT',
+      retellMessage: 'القصة تفتقر إلى التفاصيل الكافية للمقارنة. يُرجى إعادة السرد مع ذكر ما حدث.',
+    };
+  }
+
+  return {
+    isValid: true,
+    category: 'VALID_STORY',
+    retellMessage: '',
+  };
 }
 
 // Fallback semantic analysis when offline or without API key
@@ -65,17 +141,25 @@ function analyzeStoryFallback(firstStory: string, secondStory: string): StoryAna
   const trimmed1 = firstStory.trim();
   const trimmed2 = secondStory.trim();
 
-  // Reject greeting-only or insufficient input
-  if (isInsufficientTranscript(trimmed1) || isInsufficientTranscript(trimmed2)) {
+  const check1 = checkTranscriptContent(trimmed1);
+  const check2 = checkTranscriptContent(trimmed2);
+
+  if (!check1.isValid || !check2.isValid) {
+    const feedback = !check1.isValid ? check1.retellMessage : check2.retellMessage;
     return {
       overallScore: 0,
       mainEventsScore: 0,
       sequenceScore: 0,
       detailsScore: 0,
-      strengths: ['لا تتوفر تفاصيل أو أحداث كافية في النصين لتقييم التذكر'],
-      encouragementMessage:
-        'النص المسجل يحتوي على ترحيب أو كلمات مقتضبة فقط، ولا توجد قصة مكتملة لتقييمها. شاركني قصة تحتوي على أحداث وأشخاص لنكتشف ما تذكرته!',
+      strengths: ['لم تتوفر معلومات كافية في التسجيل لإجراء تقييم التذكر'],
+      encouragementMessage: `${feedback} لنتمكن معاً من اكتشاف ما تذكرته!`,
       isFallback: true,
+      recalledDetails: [],
+      omittedDetails: ['لم يتم سرد أحداث في التسجيل للمقارنة'],
+      changedDetails: [],
+      charactersAnalysis: 'لا توجد شخصيات محددة في النص للمقارنة.',
+      placesAnalysis: 'لم يتم ذكر أماكن في النص.',
+      sequenceAnalysis: 'لا يوجد تسلسل أحداث كافٍ للمقارنة.',
     };
   }
 
@@ -97,7 +181,10 @@ function analyzeStoryFallback(firstStory: string, secondStory: string): StoryAna
   const words2 = normalize(trimmed2).split(/\s+/).filter(w => w.length > 1 && !stopWords.has(w));
 
   const set1 = new Set(words1);
-  const matched = words2.filter(w => set1.has(w));
+  const matched = Array.from(new Set(words2.filter(w => set1.has(w))));
+  const set2 = new Set(words2);
+  const omitted = Array.from(new Set(words1.filter(w => !set2.has(w))));
+
   const overlapRatio = words1.length > 0 ? matched.length / Math.max(words1.length, 1) : 0;
 
   const overallScore = Math.round(overlapRatio * 100);
@@ -106,24 +193,47 @@ function analyzeStoryFallback(firstStory: string, secondStory: string): StoryAna
   const detailsScore = Math.round((overlapRatio * 0.95 + 0.05) * 100);
 
   const strengths: string[] = [];
+  const recalledDetails: string[] = [];
+  const omittedDetails: string[] = [];
+  const changedDetails: string[] = [];
+
   if (matched.length > 0) {
-    const sample = Array.from(new Set(matched)).slice(0, 2).join('، ');
-    strengths.push(`تذكرت عناصر رئيسية من القصة الأولى (${sample})`);
+    const sample = matched.slice(0, 3).map(w => `"${w}"`).join(' و ');
+    strengths.push(`تذكرت مفاهيم وعناصر من القصة الأولى مثل: ${sample}`);
+    recalledDetails.push(`تذكرت عناصر محورية شملت: ${sample}`);
   } else {
-    strengths.push('سردت القصة الثانية بأسلوب مختلف عن الأولى');
+    strengths.push('سردت القصة الثانية بأسلوب تعبيري مختلف');
+  }
+
+  if (omitted.length > 0) {
+    const omittedSample = omitted.slice(0, 2).map(w => `"${w}"`).join(' و ');
+    omittedDetails.push(`أغفلت بعض الكلمات والتفاصيل التي ذكرتها أولاً مثل: ${omittedSample}`);
+  } else {
+    omittedDetails.push('لم تغفل تفاصيل جوهرية من الرواية الأولى');
   }
 
   if (words2.length >= Math.floor(words1.length * 0.6)) {
-    strengths.push('أعدت سرد القصة بحجم وتفاصيل متقاربة');
+    strengths.push('أعدت سرد القصة بحجم وترتيب متقاربين');
+    changedDetails.push('استخدمت تعبيرات خاصة بك لسرد نفس الفكرة العامة');
   } else {
     strengths.push('لخصت الفكرة باختصار في الرواية الثانية');
+    changedDetails.push('اخترت تلخيص القصة بدلاً من ذكر كل التفاصيل السابقة');
   }
+
+  const charactersAnalysis = matched.length > 0
+    ? 'تم استرجاع الشخصيات والعناصر الرئيسية بدقة متقاربة.'
+    : 'ظهر اختلاف في الإشارة إلى الشخصيات بين الروايتين.';
+
+  const placesAnalysis = 'تم استرجاع البيئة العامة للأحداث بتعبير شفهي جميل.';
+  const sequenceAnalysis = words2.length >= Math.floor(words1.length * 0.6)
+    ? 'تسلسل الأحداث جاء متوافقاً مع البداية والوسط في القصة الأولى.'
+    : 'اقتصر تسلسل الأحداث على الفكرة الأساسية بشكل مختصر.';
 
   let encouragementMessage = '';
   if (overallScore >= 80) {
-    encouragementMessage = 'رائع ومبهر يا بطل! تذكرت معظم تفاصيل وأحداث قصتك الأولى بدقة.';
+    encouragementMessage = 'رائع ومبهر يا بطل! تذكرت معظم تفاصيل وأحداث قصتك الأولى بدقة وبراعة.';
   } else if (overallScore >= 50) {
-    encouragementMessage = 'أحسنت! تذكرت عدة تفاصيل أساسية من قصتك الأولى.';
+    encouragementMessage = 'أحسنت! تذكرت عدة تفاصيل أساسية من قصتك الأولى، ومحاولتك تدل على تركيز رائع.';
   } else {
     encouragementMessage = 'محاولة جميلة في السرد! اختلفت الرواية الثانية عن الأولى، وفي المرة القادمة ستتذكر أكثر.';
   }
@@ -136,6 +246,12 @@ function analyzeStoryFallback(firstStory: string, secondStory: string): StoryAna
     strengths: strengths.slice(0, 3),
     encouragementMessage,
     isFallback: true,
+    recalledDetails,
+    omittedDetails,
+    changedDetails,
+    charactersAnalysis,
+    placesAnalysis,
+    sequenceAnalysis,
   };
 }
 
@@ -153,17 +269,25 @@ async function handleAnalyzeStory(req: Request, res: Response) {
     const trimmed1 = firstStory.trim();
     const trimmed2 = secondStory.trim();
 
-    // Check for greeting-only / insufficient content before calling AI
-    if (isInsufficientTranscript(trimmed1) || isInsufficientTranscript(trimmed2)) {
+    const check1 = checkTranscriptContent(trimmed1);
+    const check2 = checkTranscriptContent(trimmed2);
+
+    if (!check1.isValid || !check2.isValid) {
+      const feedback = !check1.isValid ? check1.retellMessage : check2.retellMessage;
       return res.json({
         overallScore: 0,
         mainEventsScore: 0,
         sequenceScore: 0,
         detailsScore: 0,
-        strengths: ['لا تتوفر تفاصيل أو أحداث كافية في النصين لتقييم التذكر'],
-        encouragementMessage:
-          'النص المسجل يحتوي على ترحيب أو كلمات مقتضبة فقط، ولا توجد قصة مكتملة لتقييمها. شاركني قصة تحتوي على أحداث وأشخاص لنكتشف ما تذكرته!',
+        strengths: ['لم تتوفر معلومات كافية في التسجيل لإجراء تقييم التذكر'],
+        encouragementMessage: `${feedback} لنتمكن معاً من اكتشاف ما تذكرته!`,
         isFallback: false,
+        recalledDetails: [],
+        omittedDetails: ['لم يتم تسجيل قصة مكتملة للتحليل'],
+        changedDetails: [],
+        charactersAnalysis: 'لا توجد شخصيات محددة لتحليلها.',
+        placesAnalysis: 'لم يتم ذكر أماكن في النص.',
+        sequenceAnalysis: 'لا يوجد تسلسل أحداث كافٍ.',
       });
     }
 
@@ -185,20 +309,20 @@ async function handleAnalyzeStory(req: Request, res: Response) {
       },
     });
 
-    const systemInstruction = `أنت المساعد التحليلي والتربوي للعبة الأطفال "صدى حكايتي" (My Memory Tells) للمطور ل.فوزي.
+    const systemInstruction = `أنت المساعد التحليلي والتربوي الذكي للعبة الأطفال "صدى حكايتي" (My Memory Tells) للمطور ل.فوزي.
 مهمتك تقييم التذكر والتعبير الشفهي بدقة وأمانة وموضوعية تشجيعية، ومقارنة الرواية الأولى بإعادة السرد من الذاكرة في الرواية الثانية.
 
-قواعد الدقة والأمانة الصارمة:
-1. انتبه جيداً: لا تخترع تفاصيل أو شخصيات أو أماكن لم تذكر في النصين نهائياً.
-2. إذا كان النصان يحتويان على ترحيب أو مجاملة فقط (مثل "السلام عليكم" أو كلمات معدودة لا تشكل قصة):
-   - يجب أن تكون الدرجات كلها 0.
-   - قائمة strengths يجب أن تكون: ["لا تتوفر تفاصيل أو أحداث كافية في النص لتقييم التذكر"].
-   - الرسالة التشجيعية: دعوة الطفل بلطف لحكاية قصة حقيقية تحتوي على مواقف وأحداث.
-3. للقصص الحقيقية:
-   - قارن الأحداث والتفاصيل والشخصيات المذكورة بالفعل في النصين فقط.
-   - نقاط القوة (strengths) يجب أن تشير فقط إلى ما تذكره الطفل فعلياً ومطابقته للقصة الأولى.
-   - لا تقل "تذكرت المكان والأشخاص" إلا إذا كان النص الأول يحتوي فعلاً على مكان وأشخاص وتم ذكرهم في النص الثاني.
-4. التقييم تشجيعي ولطيف، خالي من أي تشخيص طبي أو تصنيف نفسي.`;
+قواعد المقارنة الدقيقة:
+1. قارن بدقة بين الحكاية الأولى وإعادة سرد الطفل، واستخرج أوجه الاتفاق والاختلاف مع تضمين أمثلة واقتباسات صريحة من كلام الطفل الفعلي.
+2. حلل العناصر الثلاثة:
+   - الشخصيات (charactersAnalysis): من تم تذكره من الأشخاص/الكائنات ومن أُغفل.
+   - الأماكن (placesAnalysis): الأماكن والبيئة التي دارت فيها القصة.
+   - تسلسل الأحداث (sequenceAnalysis): ترتيب الأحداث الزمني وترابطها.
+3. استخرج قوائم ملموسة:
+   - ما تذكره الطفل (recalledDetails): أمثلة لما ذكره الطفل وتطابق دلالياً مع القصة الأولى (مع اقتباسات قصيرة بين قوسين).
+   - ما أغفله الطفل (omittedDetails): تفاصيل وردت في الرواية الأولى ولم يذكرها في الإعادة.
+   - ما غيّره الطفل (changedDetails): كلمات أو وقائع غيّرها أو عبّر عنها بأسلوب مختلف.
+4. التقييم تشجيعي ولطيف وصادق، مبني 100% على النصين دون اختلاق أي شخصية أو مكان لم يُذكر.`;
 
     const prompt = `القصة الأولى (الرواية الأولى):
 "${trimmed1}"
@@ -206,9 +330,8 @@ async function handleAnalyzeStory(req: Request, res: Response) {
 القصة الثانية (إعادة السرد من الذاكرة):
 "${trimmed2}"
 
-قارن بأمانة بين الروايتين، وقدم نتيجة التقييم بصيغة JSON.`;
+قارن بأمانة واستخرج أوجه الاتفاق والاختلاف بالأمثلة، وقدم النتيجة بتنسيق JSON حصرياً.`;
 
-    // 15-second controlled server-side timeout wrapper
     let timeoutTimer: NodeJS.Timeout | undefined;
     const timeoutPromise = new Promise<never>((_, reject) => {
       timeoutTimer = setTimeout(() => {
@@ -238,9 +361,49 @@ async function handleAnalyzeStory(req: Request, res: Response) {
             encouragementMessage: {
               type: Type.STRING,
               description: 'رسالة تشجيعية دافئة للطفل باللغة العربية'
+            },
+            recalledDetails: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+              description: 'أمثلة عما تذكره الطفل من أحداث أو شخصيات مع اقتباسات من كلامه'
+            },
+            omittedDetails: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+              description: 'تفاصيل وردت في الرواية الأولى وأغفلها الطفل في إعادة السرد'
+            },
+            changedDetails: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+              description: 'ما غيّره الطفل أو عبّر عنه بكلمات مختلفة مع أمثلة'
+            },
+            charactersAnalysis: {
+              type: Type.STRING,
+              description: 'تحليل دقيق للشخصيات المذكورة والمسترجعة'
+            },
+            placesAnalysis: {
+              type: Type.STRING,
+              description: 'تحليل دقيق للأماكن المذكورة ومدى استرجاعها'
+            },
+            sequenceAnalysis: {
+              type: Type.STRING,
+              description: 'تحليل تسلسل وترتيب الأحداث الزمني'
             }
           },
-          required: ['overallScore', 'mainEventsScore', 'sequenceScore', 'detailsScore', 'strengths', 'encouragementMessage']
+          required: [
+            'overallScore',
+            'mainEventsScore',
+            'sequenceScore',
+            'detailsScore',
+            'strengths',
+            'encouragementMessage',
+            'recalledDetails',
+            'omittedDetails',
+            'changedDetails',
+            'charactersAnalysis',
+            'placesAnalysis',
+            'sequenceAnalysis'
+          ]
         }
       }
     });
@@ -265,6 +428,12 @@ async function handleAnalyzeStory(req: Request, res: Response) {
         : ['تذكرت بعض تفاصيل القصة'],
       encouragementMessage: parsed.encouragementMessage || 'أحسنت! واصل تدريب ذاكرتك بحكاية القصص.',
       isFallback: false,
+      recalledDetails: Array.isArray(parsed.recalledDetails) ? parsed.recalledDetails.slice(0, 3) : [],
+      omittedDetails: Array.isArray(parsed.omittedDetails) ? parsed.omittedDetails.slice(0, 3) : [],
+      changedDetails: Array.isArray(parsed.changedDetails) ? parsed.changedDetails.slice(0, 3) : [],
+      charactersAnalysis: parsed.charactersAnalysis || '',
+      placesAnalysis: parsed.placesAnalysis || '',
+      sequenceAnalysis: parsed.sequenceAnalysis || '',
     };
 
     return res.json(sanitized);

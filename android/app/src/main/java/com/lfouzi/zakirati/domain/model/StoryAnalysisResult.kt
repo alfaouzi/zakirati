@@ -4,7 +4,11 @@ import kotlinx.serialization.Serializable
 
 /**
  * Result model returned by the AI semantic comparison.
- * All scores are game scores between 0 and 100.
+ * Compares the first story with the child's retelling, extracting:
+ * - What was remembered with quotes/examples (recalledDetails)
+ * - What was omitted (omittedDetails)
+ * - What was changed/substituted (changedDetails)
+ * - Detailed analysis of characters, places, and event sequence.
  */
 @Serializable
 data class StoryAnalysisResult(
@@ -14,7 +18,13 @@ data class StoryAnalysisResult(
     val detailsScore: Int,
     val strengths: List<String>,
     val encouragementMessage: String,
-    val isFallback: Boolean = false
+    val isFallback: Boolean = false,
+    val recalledDetails: List<String> = emptyList(),
+    val omittedDetails: List<String> = emptyList(),
+    val changedDetails: List<String> = emptyList(),
+    val charactersAnalysis: String = "",
+    val placesAnalysis: String = "",
+    val sequenceAnalysis: String = ""
 ) {
     init {
         require(overallScore in 0..100) { "overallScore must be between 0 and 100" }

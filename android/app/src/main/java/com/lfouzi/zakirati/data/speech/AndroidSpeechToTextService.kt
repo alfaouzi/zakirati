@@ -20,7 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
  * SpeechRecognizer naturally terminates on short silence pauses.
  * This implementation persists an active user session, accumulates segmented utterances,
  * seamlessly restarts recognition upon natural pause/timeout until the user explicitly presses Stop,
- * and prevents duplicate phrase concatenation or infinite restart loops.
+ * ensuring recording never terminates prematurely due to silence.
  */
 class AndroidSpeechToTextService(
     private val context: Context
@@ -37,11 +37,9 @@ class AndroidSpeechToTextService(
 
     private var isUserSessionActive: Boolean = false
     private val accumulatedSegments = mutableListOf<String>()
-    private var consecutiveSilenceCount: Int = 0
 
     companion object {
-        private const val MAX_CONSECUTIVE_SILENCE_RETRIES = 6
-        private const val RESTART_DELAY_MS = 120L
+        private const val RESTART_DELAY_MS = 100L
     }
 
     override fun startListening() {
@@ -55,7 +53,6 @@ class AndroidSpeechToTextService(
             isUserSessionActive = true
             isListening = true
             accumulatedSegments.clear()
-            consecutiveSilenceCount = 0
 
             _state.value = SpeechRecognitionState.Listening("")
             startRecognizerInternal()
@@ -88,9 +85,12 @@ class AndroidSpeechToTextService(
             speechRecognizer?.startListening(intent)
         } catch (e: Exception) {
             if (isUserSessionActive) {
-                isUserSessionActive = false
-                isListening = false
-                _state.value = SpeechRecognitionState.Error("تعذر تشغيل الميكروفون. تحقق من الأذونات وحاول ثانية.")
+                // If there's an immediate binding issue, attempt recovery after a small delay
+                mainHandler.postDelayed({
+                    if (isUserSessionActive) {
+                        startRecognizerInternal()
+                    }
+                }, 300L)
             }
         }
     }
@@ -101,6 +101,7 @@ class AndroidSpeechToTextService(
                 return@post
             }
 
+            // Explicit user stop request
             isUserSessionActive = false
             isListening = false
             mainHandler.removeCallbacksAndMessages(null)
@@ -128,7 +129,6 @@ class AndroidSpeechToTextService(
         isListening = false
         mainHandler.removeCallbacksAndMessages(null)
         accumulatedSegments.clear()
-        consecutiveSilenceCount = 0
 
         try {
             speechRecognizer?.stopListening()
@@ -144,7 +144,6 @@ class AndroidSpeechToTextService(
 
             if (!segment.isNullOrBlank()) {
                 appendSegmentIfNew(segment)
-                consecutiveSilenceCount = 0
             }
 
             val combined = getCombinedTranscript()
@@ -192,26 +191,14 @@ class AndroidSpeechToTextService(
             when (error) {
                 SpeechRecognizer.ERROR_SPEECH_TIMEOUT,
                 SpeechRecognizer.ERROR_NO_MATCH -> {
-                    // Normal speech pause while the child is gathering their thoughts
-                    consecutiveSilenceCount++
-                    if (consecutiveSilenceCount < MAX_CONSECUTIVE_SILENCE_RETRIES) {
-                        _state.value = SpeechRecognitionState.Listening(getCombinedTranscript())
-                        mainHandler.postDelayed({
-                            if (isUserSessionActive) {
-                                startRecognizerInternal()
-                            }
-                        }, RESTART_DELAY_MS + 50L)
-                    } else {
-                        // Excessive prolonged silence (e.g. child left the phone)
-                        isUserSessionActive = false
-                        isListening = false
-                        val currentText = getCombinedTranscript()
-                        if (currentText.isNotBlank()) {
-                            _state.value = SpeechRecognitionState.Success(currentText)
-                        } else {
-                            _state.value = SpeechRecognitionState.Error("لم أسمع أي كلام. اضغط على الميكروفون وابدأ بحكاية قصتك!")
+                    // Normal silence or thinking pause between sentences.
+                    // DO NOT STOP! The session remains continuously active until the user presses Stop.
+                    _state.value = SpeechRecognitionState.Listening(getCombinedTranscript())
+                    mainHandler.postDelayed({
+                        if (isUserSessionActive) {
+                            startRecognizerInternal()
                         }
-                    }
+                    }, RESTART_DELAY_MS)
                 }
 
                 SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> {
@@ -226,25 +213,16 @@ class AndroidSpeechToTextService(
                         if (isUserSessionActive) {
                             startRecognizerInternal()
                         }
-                    }, 250L)
+                    }, 200L)
                 }
 
                 else -> {
-                    // Network or audio hardware issue
-                    isUserSessionActive = false
-                    isListening = false
-                    val currentText = getCombinedTranscript()
-                    if (currentText.isNotBlank()) {
-                        // Preserve whatever the child spoke before the error
-                        _state.value = SpeechRecognitionState.Success(currentText)
-                    } else {
-                        val message = when (error) {
-                            SpeechRecognizer.ERROR_NETWORK,
-                            SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "تعذر الاتصال بـ صدى حكايتي الآن. تحقق من اتصال الإنترنت وحاول مرة أخرى."
-                            else -> "لم أستطع سماع القصة بوضوح. حاول مرة أخرى."
+                    // On transient network or recognition errors, continue listening if session is still active
+                    mainHandler.postDelayed({
+                        if (isUserSessionActive) {
+                            startRecognizerInternal()
                         }
-                        _state.value = SpeechRecognitionState.Error(message)
-                    }
+                    }, 300L)
                 }
             }
         }
