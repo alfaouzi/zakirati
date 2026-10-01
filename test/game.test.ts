@@ -1,6 +1,6 @@
 /**
  * Unit tests for "صدى حكايتي" (My Memory Tells)
- * Validates domain rules, scores, service fallbacks, state transitions, and error handling.
+ * Validates domain rules, scores, service fallbacks, state transitions, greeting rejection, and grounded AI analysis.
  */
 
 import { MockStoryAnalysisService, RemoteStoryAnalysisService } from '../src/services/aiService';
@@ -24,8 +24,8 @@ async function runTests() {
 
   // Test 1: StoryAnalysisResult validation with MockService
   const mockService = new MockStoryAnalysisService();
-  const story1 = 'ذهبت إلى الحديقة مع أبي ولعبت مع صديقي.';
-  const story2 = 'رحت للحديقة مع والدي ولعبت هناك مع صاحبي.';
+  const story1 = 'ذهبت إلى الحديقة مع أبي ولعبت بالكرة مع أصدقائي في الصباح.';
+  const story2 = 'في الصباح ذهبت إلى الحديقة مع والدي ولعبت بالكرة مع أصحابي.';
   const result: StoryAnalysisResult = await mockService.analyzeStories(story1, story2);
 
   assert(
@@ -63,8 +63,6 @@ async function runTests() {
 
   // Test 5: Empty transcript rejection in first story
   try {
-    await mockService.analyzeStories('', story2);
-    // In our abstraction, RemoteStoryAnalysisService checks empty inputs
     const remote = new RemoteStoryAnalysisService();
     let caught = false;
     try {
@@ -92,7 +90,6 @@ async function runTests() {
   }
 
   // Test 7: AI Service failure resilience / Fallback
-  // If remote backend cannot be reached, RemoteStoryAnalysisService gracefully falls back to mock
   const brokenEndpointService = new RemoteStoryAnalysisService('http://invalid-fake-host-99999.test/api');
   const fallbackResult = await brokenEndpointService.analyzeStories(story1, story2);
   assert(
@@ -134,12 +131,6 @@ async function runTests() {
   );
 
   // Test 11: Stale state reset on start new game
-  const sampleGameState = {
-    firstStory: 'قصة قديمة 1',
-    secondStory: 'قصة قديمة 2',
-    result: result,
-  };
-  // Emulate reset
   const resetState = {
     firstStory: '',
     secondStory: '',
@@ -151,11 +142,39 @@ async function runTests() {
   );
 
   // Test 12: Request size limit verification (100kb limit)
-  const hugePayload = 'أ'.repeat(105 * 1024); // 105 KB string
+  const hugePayload = 'أ'.repeat(105 * 1024);
   const isPayloadTooLarge = hugePayload.length > 100 * 1024;
   assert(
     isPayloadTooLarge,
     '12. Request size limit protection detects and rejects oversized payload (>100kb)'
+  );
+
+  // Test 13: Greeting-only transcript produces insufficient-information result (0 score, no false claims)
+  const greetingResult = await mockService.analyzeStories('السلام عليكم', 'السلام عليكم ورحمة الله');
+  assert(
+    greetingResult.overallScore === 0 &&
+      greetingResult.mainEventsScore === 0 &&
+      greetingResult.strengths[0].includes('لا تتوفر تفاصيل'),
+    '13. Greeting-only transcripts produce an honest insufficient-information result with score 0'
+  );
+
+  // Test 14: AI analysis cannot claim details (places, people) unsupported by the supplied transcripts
+  const hasFabricatedPraise = greetingResult.strengths.some(
+    s => s.includes('المكان') || s.includes('الأشخاص') || s.includes('تسلسل الأحداث')
+  );
+  assert(
+    !hasFabricatedPraise,
+    '14. Greeting-only analysis strictly rejects fabricated praise regarding places, people, or sequence'
+  );
+
+  // Test 15: Valid, sufficiently detailed transcripts still reach existing comparison workflow
+  const validComparison = await mockService.analyzeStories(
+    'خرجت البطة الصغيرة إلى البحيرة لتسبح.',
+    'ذهبت البطة إلى البحيرة وسبحت في الماء.'
+  );
+  assert(
+    validComparison.overallScore > 0 && validComparison.strengths.length > 0,
+    '15. Valid, detailed transcripts successfully compare and return grounded evaluation'
   );
 
   console.log(`\nTests Summary: ${passed} passed, ${failed} failed.\n`);

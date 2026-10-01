@@ -41,8 +41,44 @@ function clampScore(score: unknown, defaultVal: number): number {
   return Math.max(0, Math.min(100, Math.round(score)));
 }
 
+const GREETING_WORDS = new Set([
+  'سلام', 'السلام', 'عليكم', 'وعليكم', 'ورحمة', 'الله', 'وبركاته',
+  'مرحبا', 'مرحباً', 'اهلا', 'أهلا', 'أهلاً', 'صباح', 'الخير', 'مساء',
+  'هاي', 'الو', 'ألو', 'شكرا', 'شكراً', 'نعم', 'لا', 'ايوه', 'ايوة',
+  'بسم', 'الرحمن', 'الرحيم', 'تمام', 'اوكي', 'أوكي', 'هلو', 'هلا'
+]);
+
+function isInsufficientTranscript(text: string): boolean {
+  const words = text
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (words.length < 4) return true;
+  const nonGreetings = words.filter(w => !GREETING_WORDS.has(w));
+  return nonGreetings.length < 3;
+}
+
 // Fallback semantic analysis when offline or without API key
 function analyzeStoryFallback(firstStory: string, secondStory: string): StoryAnalysisResponse {
+  const trimmed1 = firstStory.trim();
+  const trimmed2 = secondStory.trim();
+
+  // Reject greeting-only or insufficient input
+  if (isInsufficientTranscript(trimmed1) || isInsufficientTranscript(trimmed2)) {
+    return {
+      overallScore: 0,
+      mainEventsScore: 0,
+      sequenceScore: 0,
+      detailsScore: 0,
+      strengths: ['لا تتوفر تفاصيل أو أحداث كافية في النصين لتقييم التذكر'],
+      encouragementMessage:
+        'النص المسجل يحتوي على ترحيب أو كلمات مقتضبة فقط، ولا توجد قصة مكتملة لتقييمها. شاركني قصة تحتوي على أحداث وأشخاص لنكتشف ما تذكرته!',
+      isFallback: true,
+    };
+  }
+
   const normalize = (text: string) =>
     text
       .replace(/[إأآا]/g, 'ا')
@@ -57,49 +93,46 @@ function analyzeStoryFallback(firstStory: string, secondStory: string): StoryAna
     'و', 'كان', 'كانت', 'ماذا', 'هو', 'هي', 'انا', 'نحن', 'يا', 'قد', 'لقد', 'ان', 'انها'
   ]);
 
-  const words1 = normalize(firstStory).split(/\s+/).filter(w => w.length > 1 && !stopWords.has(w));
-  const words2 = normalize(secondStory).split(/\s+/).filter(w => w.length > 1 && !stopWords.has(w));
+  const words1 = normalize(trimmed1).split(/\s+/).filter(w => w.length > 1 && !stopWords.has(w));
+  const words2 = normalize(trimmed2).split(/\s+/).filter(w => w.length > 1 && !stopWords.has(w));
 
   const set1 = new Set(words1);
   const matched = words2.filter(w => set1.has(w));
-  const overlapRatio = words1.length > 0 ? matched.length / Math.max(words1.length, 1) : 0.8;
+  const overlapRatio = words1.length > 0 ? matched.length / Math.max(words1.length, 1) : 0;
 
-  // Calculate scores between 60 and 96 for game encouragement
-  const base = Math.min(1, Math.max(0.3, overlapRatio));
-  const overallScore = Math.round(55 + base * 40);
-  const mainEventsScore = Math.round(58 + base * 38);
-  const sequenceScore = Math.round(50 + base * 45);
-  const detailsScore = Math.round(52 + base * 40);
+  const overallScore = Math.round(overlapRatio * 100);
+  const mainEventsScore = Math.round((overlapRatio * 0.9 + 0.1) * 100);
+  const sequenceScore = Math.round((overlapRatio * 0.85 + 0.15) * 100);
+  const detailsScore = Math.round((overlapRatio * 0.95 + 0.05) * 100);
 
   const strengths: string[] = [];
-  if (overlapRatio > 0.4) {
-    strengths.push('تذكرت المكان والأشخاص بشكل رائع');
+  if (matched.length > 0) {
+    const sample = Array.from(new Set(matched)).slice(0, 2).join('، ');
+    strengths.push(`تذكرت عناصر رئيسية من القصة الأولى (${sample})`);
   } else {
-    strengths.push('تذكرت الفكرة الأساسية للقصة');
+    strengths.push('سردت القصة الثانية بأسلوب مختلف عن الأولى');
   }
 
   if (words2.length >= Math.floor(words1.length * 0.6)) {
-    strengths.push('حافظت على تسلسل الأحداث');
+    strengths.push('أعدت سرد القصة بحجم وتفاصيل متقاربة');
   } else {
-    strengths.push('حاولت سرد أهم ما في القصة');
+    strengths.push('لخصت الفكرة باختصار في الرواية الثانية');
   }
-
-  strengths.push('استخدمت كلماتك الخاصة بأسلوب جميل');
 
   let encouragementMessage = '';
   if (overallScore >= 80) {
-    encouragementMessage = 'رائع جدًا! تذكرت معظم أحداث وتفاصيل قصتك بذكاء.';
-  } else if (overallScore >= 65) {
-    encouragementMessage = 'أحسنت يا بطل! تذكرت الكثير من التفاصيل المهمة للقصة.';
+    encouragementMessage = 'رائع ومبهر يا بطل! تذكرت معظم تفاصيل وأحداث قصتك الأولى بدقة.';
+  } else if (overallScore >= 50) {
+    encouragementMessage = 'أحسنت! تذكرت عدة تفاصيل أساسية من قصتك الأولى.';
   } else {
-    encouragementMessage = 'محاولة جميلة ومميزة! تذكرت بعض الأحداث، وفي الجولة القادمة ستتذكر أكثر.';
+    encouragementMessage = 'محاولة جميلة في السرد! اختلفت الرواية الثانية عن الأولى، وفي المرة القادمة ستتذكر أكثر.';
   }
 
   return {
-    overallScore: clampScore(overallScore, 75),
-    mainEventsScore: clampScore(mainEventsScore, 75),
-    sequenceScore: clampScore(sequenceScore, 75),
-    detailsScore: clampScore(detailsScore, 75),
+    overallScore: clampScore(overallScore, 50),
+    mainEventsScore: clampScore(mainEventsScore, 50),
+    sequenceScore: clampScore(sequenceScore, 50),
+    detailsScore: clampScore(detailsScore, 50),
     strengths: strengths.slice(0, 3),
     encouragementMessage,
     isFallback: true,
@@ -120,10 +153,23 @@ async function handleAnalyzeStory(req: Request, res: Response) {
     const trimmed1 = firstStory.trim();
     const trimmed2 = secondStory.trim();
 
+    // Check for greeting-only / insufficient content before calling AI
+    if (isInsufficientTranscript(trimmed1) || isInsufficientTranscript(trimmed2)) {
+      return res.json({
+        overallScore: 0,
+        mainEventsScore: 0,
+        sequenceScore: 0,
+        detailsScore: 0,
+        strengths: ['لا تتوفر تفاصيل أو أحداث كافية في النصين لتقييم التذكر'],
+        encouragementMessage:
+          'النص المسجل يحتوي على ترحيب أو كلمات مقتضبة فقط، ولا توجد قصة مكتملة لتقييمها. شاركني قصة تحتوي على أحداث وأشخاص لنكتشف ما تذكرته!',
+        isFallback: false,
+      });
+    }
+
     // Check if Gemini API Key is configured
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey || apiKey === 'MY_GEMINI_API_KEY') {
-      // Use fallback
       const fallbackResult = analyzeStoryFallback(trimmed1, trimmed2);
       return res.json(fallbackResult);
     }
@@ -139,23 +185,20 @@ async function handleAnalyzeStory(req: Request, res: Response) {
       },
     });
 
-    const systemInstruction = `أنت المساعد الذكي للعبة الأطفال التعليمية "صدى حكايتي" (My Memory Tells) للمطور ل.فوزي.
-الهدف هو تدريب ذاكرة الطفل والتعبير الشفهي بتشجيع وإيجابية مطلقة.
-المهمة:
-قارن دلاليًا ومعنويًا بين القصة الأولى التي حكاها الطفل، وإعادة سردها من الذاكرة في الجولة الثانية.
+    const systemInstruction = `أنت المساعد التحليلي والتربوي للعبة الأطفال "صدى حكايتي" (My Memory Tells) للمطور ل.فوزي.
+مهمتك تقييم التذكر والتعبير الشفهي بدقة وأمانة وموضوعية تشجيعية، ومقارنة الرواية الأولى بإعادة السرد من الذاكرة في الرواية الثانية.
 
-قواعد صارمة:
-1. المقارنة دلالية وفكرية (المعنى، الأحداث، الشخصيات، الأماكن، الترتيب الزمني، التفاصيل المفيدة)، وليست مطابقة حرفية للكلمات.
-2. لا تحاسب الطفل على الكلمات المحشوة أو اللهجات الدارجة (كالجزائرية أو الشامية أو المصرية) أو الأخطاء الإملائية أو أخطاء التعرف على الصوت.
-3. التقييم هو درجة لعبة (Game score) تشجيعية، وليس اختبار ذكاء أو فحصًا نفسيًا أو طبيًا.
-4. حافظ دائمًا على لغة عربية ودودة ومشجعة ودافئة للطفل، دون أي توبيخ أو إحباط حتى مع النقص في التذكر.
-5. أعد النتيجة بتنسيق JSON حصريًا وفق المخطط المطلوب:
-- overallScore (0-100)
-- mainEventsScore (0-100)
-- sequenceScore (0-100)
-- detailsScore (0-100)
-- strengths (قائمة من 2 إلى 3 نقاط إيجابية واضحة عما تذكره الطفل)
-- encouragementMessage (رسالة دافئة ومحفزة للطفل تناسب عمره)`;
+قواعد الدقة والأمانة الصارمة:
+1. انتبه جيداً: لا تخترع تفاصيل أو شخصيات أو أماكن لم تذكر في النصين نهائياً.
+2. إذا كان النصان يحتويان على ترحيب أو مجاملة فقط (مثل "السلام عليكم" أو كلمات معدودة لا تشكل قصة):
+   - يجب أن تكون الدرجات كلها 0.
+   - قائمة strengths يجب أن تكون: ["لا تتوفر تفاصيل أو أحداث كافية في النص لتقييم التذكر"].
+   - الرسالة التشجيعية: دعوة الطفل بلطف لحكاية قصة حقيقية تحتوي على مواقف وأحداث.
+3. للقصص الحقيقية:
+   - قارن الأحداث والتفاصيل والشخصيات المذكورة بالفعل في النصين فقط.
+   - نقاط القوة (strengths) يجب أن تشير فقط إلى ما تذكره الطفل فعلياً ومطابقته للقصة الأولى.
+   - لا تقل "تذكرت المكان والأشخاص" إلا إذا كان النص الأول يحتوي فعلاً على مكان وأشخاص وتم ذكرهم في النص الثاني.
+4. التقييم تشجيعي ولطيف، خالي من أي تشخيص طبي أو تصنيف نفسي.`;
 
     const prompt = `القصة الأولى (الرواية الأولى):
 "${trimmed1}"
@@ -163,7 +206,7 @@ async function handleAnalyzeStory(req: Request, res: Response) {
 القصة الثانية (إعادة السرد من الذاكرة):
 "${trimmed2}"
 
-قارن بين الروايتين دلاليًا، وقدم نتيجة التقييم التشجيعي بصيغة JSON.`;
+قارن بأمانة بين الروايتين، وقدم نتيجة التقييم بصيغة JSON.`;
 
     // 15-second controlled server-side timeout wrapper
     let timeoutTimer: NodeJS.Timeout | undefined;
@@ -190,11 +233,11 @@ async function handleAnalyzeStory(req: Request, res: Response) {
             strengths: {
               type: Type.ARRAY,
               items: { type: Type.STRING },
-              description: 'قائمة بنقاط القوة التي تذكرها الطفل بنجاح باللغة العربية'
+              description: 'قائمة بنقاط القوة التي تذكرها الطفل بنجاح باللغة العربية مبنية على النص فقط'
             },
             encouragementMessage: {
               type: Type.STRING,
-              description: 'رسالة تشجيعية دافئة للطفل باللغة العربية لقراءتها بصوت عالٍ'
+              description: 'رسالة تشجيعية دافئة للطفل باللغة العربية'
             }
           },
           required: ['overallScore', 'mainEventsScore', 'sequenceScore', 'detailsScore', 'strengths', 'encouragementMessage']
@@ -213,24 +256,22 @@ async function handleAnalyzeStory(req: Request, res: Response) {
 
     const parsed = JSON.parse(text) as StoryAnalysisResponse;
     const sanitized: StoryAnalysisResponse = {
-      overallScore: clampScore(parsed.overallScore, 80),
-      mainEventsScore: clampScore(parsed.mainEventsScore, 80),
-      sequenceScore: clampScore(parsed.sequenceScore, 75),
-      detailsScore: clampScore(parsed.detailsScore, 75),
+      overallScore: clampScore(parsed.overallScore, 0),
+      mainEventsScore: clampScore(parsed.mainEventsScore, 0),
+      sequenceScore: clampScore(parsed.sequenceScore, 0),
+      detailsScore: clampScore(parsed.detailsScore, 0),
       strengths: Array.isArray(parsed.strengths) && parsed.strengths.length > 0
         ? parsed.strengths.slice(0, 3)
-        : ['تذكرت الأحداث المهمة في قصتك', 'حافظت على المعنى العام للقصة'],
-      encouragementMessage: parsed.encouragementMessage || 'أحسنت! تذكرت تفاصيل جميلة من قصتك.',
+        : ['تذكرت بعض تفاصيل القصة'],
+      encouragementMessage: parsed.encouragementMessage || 'أحسنت! واصل تدريب ذاكرتك بحكاية القصص.',
       isFallback: false,
     };
 
     return res.json(sanitized);
   } catch (error: any) {
-    // Sanitized logging: log only safe diagnostic category without any child story text or request body
     const category = error?.message === 'UPSTREAM_AI_TIMEOUT' ? 'TIMEOUT_EXCEEDED' : 'AI_UPSTREAM_ERROR';
     console.error(`[StoryAnalysis] ${category}: Analysis failed safely without logging story contents.`);
 
-    // Graceful fallback so the child's game experience is uninterrupted
     const { firstStory, secondStory } = req.body || {};
     const fallbackResult = analyzeStoryFallback(firstStory || '', secondStory || '');
     return res.json(fallbackResult);
@@ -245,7 +286,6 @@ app.get('/api/health', (_req: Request, res: Response) => {
   res.status(200).json({ status: 'ok' });
 });
 
-// Support both endpoint styles mentioned in the specification
 app.post('/analyze-story', handleAnalyzeStory);
 app.post('/api/analyze-story', handleAnalyzeStory);
 

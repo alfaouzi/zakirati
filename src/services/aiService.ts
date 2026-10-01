@@ -7,6 +7,25 @@ export interface IStoryAnalysisService {
   ): Promise<StoryAnalysisResult>;
 }
 
+const GREETING_WORDS = new Set([
+  'سلام', 'السلام', 'عليكم', 'وعليكم', 'ورحمة', 'الله', 'وبركاته',
+  'مرحبا', 'مرحباً', 'اهلا', 'أهلا', 'أهلاً', 'صباح', 'الخير', 'مساء',
+  'هاي', 'الو', 'ألو', 'شكرا', 'شكراً', 'نعم', 'لا', 'ايوه', 'ايوة',
+  'بسم', 'الرحمن', 'الرحيم', 'تمام', 'اوكي', 'أوكي', 'هلو', 'هلا'
+]);
+
+function isInsufficientTranscript(text: string): boolean {
+  const words = text
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (words.length < 4) return true;
+  const nonGreetings = words.filter(w => !GREETING_WORDS.has(w));
+  return nonGreetings.length < 3;
+}
+
 export class RemoteStoryAnalysisService implements IStoryAnalysisService {
   private endpoint: string;
 
@@ -79,24 +98,20 @@ export class RemoteStoryAnalysisService implements IStoryAnalysisService {
       return Math.max(0, Math.min(100, Math.round(num)));
     };
 
-    const overallScore = sanitizeScore(data.overallScore, 85);
-    const mainEventsScore = sanitizeScore(data.mainEventsScore, 85);
-    const sequenceScore = sanitizeScore(data.sequenceScore, 80);
-    const detailsScore = sanitizeScore(data.detailsScore, 80);
+    const overallScore = sanitizeScore(data.overallScore, 0);
+    const mainEventsScore = sanitizeScore(data.mainEventsScore, 0);
+    const sequenceScore = sanitizeScore(data.sequenceScore, 0);
+    const detailsScore = sanitizeScore(data.detailsScore, 0);
 
     const strengths: string[] =
       Array.isArray(data.strengths) && data.strengths.length > 0
         ? data.strengths.map(String).slice(0, 3)
-        : [
-            'تذكرت الأحداث المهمة في قصتك',
-            'حافظت على الترتيب الزمني',
-            'عبرت عن قصتك بأسلوب جميل',
-          ];
+        : ['تذكرت بعض تفاصيل القصة'];
 
     const encouragementMessage =
       typeof data.encouragementMessage === 'string' && data.encouragementMessage.trim()
         ? data.encouragementMessage
-        : 'أحسنت يا بطل! تذكرت تفاصيل جميلة من قصتك.';
+        : 'أحسنت! واصل تدريب ذاكرتك بحكاية القصص.';
 
     return {
       overallScore,
@@ -115,40 +130,72 @@ export class MockStoryAnalysisService implements IStoryAnalysisService {
     firstStory: string,
     secondStory: string
   ): Promise<StoryAnalysisResult> {
-    // Artificial small delay to simulate thinking
-    await new Promise((resolve) => setTimeout(resolve, 1200));
+    await new Promise((resolve) => setTimeout(resolve, 800));
 
-    const words1 = firstStory.trim().split(/\s+/).filter(Boolean);
-    const words2 = secondStory.trim().split(/\s+/).filter(Boolean);
+    const trimmed1 = firstStory.trim();
+    const trimmed2 = secondStory.trim();
 
-    // Basic semantic check
-    const ratio = Math.min(1, Math.max(0.3, words2.length / Math.max(words1.length, 1)));
-    const overallScore = Math.round(65 + ratio * 30);
-    const mainEventsScore = Math.round(70 + ratio * 25);
-    const sequenceScore = Math.round(60 + ratio * 35);
-    const detailsScore = Math.round(65 + ratio * 28);
+    if (!trimmed1) {
+      throw new Error('القصة الأولى فارغة');
+    }
+    if (!trimmed2) {
+      throw new Error('القصة الثانية فارغة');
+    }
 
-    const strengths: string[] = [
-      'تذكرت الشخصيات والأماكن الأساسية',
-      'حافظت على المعنى العام لقصتك الجميلة',
-      'سردت الأحداث بثقة وترتيب رائع',
-    ];
+    if (isInsufficientTranscript(trimmed1) || isInsufficientTranscript(trimmed2)) {
+      return {
+        overallScore: 0,
+        mainEventsScore: 0,
+        sequenceScore: 0,
+        detailsScore: 0,
+        strengths: ['لا تتوفر تفاصيل أو أحداث كافية في النصين لتقييم التذكر'],
+        encouragementMessage:
+          'النص المسجل يحتوي على ترحيب أو كلمات مقتضبة فقط، ولا توجد قصة مكتملة لتقييمها. شاركني قصة تحتوي على أحداث وأشخاص لنكتشف ما تذكرته!',
+        isFallback: true,
+      };
+    }
 
-    let encouragementMessage = 'أحسنت! تذكرت تفاصيل جميلة من قصتك وحكايتك ممتعة.';
-    if (overallScore >= 85) {
-      encouragementMessage = 'رائع ومبهر! تذكرت معظم أحداث قصتك وتفاصيلها بدقة وبراعة.';
-    } else if (overallScore >= 70) {
-      encouragementMessage = 'أحسنت يا بطل! تذكرت الكثير من التفاصيل المهمة للقصة.';
+    const words1 = trimmed1.split(/\s+/).filter(Boolean);
+    const words2 = trimmed2.split(/\s+/).filter(Boolean);
+
+    const set1 = new Set(words1);
+    const matched = words2.filter(w => set1.has(w));
+    const ratio = words1.length > 0 ? matched.length / words1.length : 0;
+
+    const overallScore = Math.round(ratio * 100);
+    const mainEventsScore = Math.round((ratio * 0.9 + 0.1) * 100);
+    const sequenceScore = Math.round((ratio * 0.85 + 0.15) * 100);
+    const detailsScore = Math.round((ratio * 0.95 + 0.05) * 100);
+
+    const strengths: string[] = [];
+    if (matched.length > 0) {
+      const sample = Array.from(new Set(matched)).slice(0, 2).join('، ');
+      strengths.push(`تذكرت عناصر رئيسية من القصة الأولى (${sample})`);
     } else {
-      encouragementMessage = 'محاولة جميلة ومميزة! تذكرت بعض الأحداث، وفي الجولة القادمة ستتذكر أكثر.';
+      strengths.push('سردت القصة الثانية بأسلوب مختلف عن الأولى');
+    }
+
+    if (words2.length >= Math.floor(words1.length * 0.6)) {
+      strengths.push('أعدت سرد القصة بحجم وتفاصيل متقاربة');
+    } else {
+      strengths.push('لخصت الفكرة باختصار في الرواية الثانية');
+    }
+
+    let encouragementMessage = 'أحسنت! واصل تدريب ذاكرتك بحكاية القصص.';
+    if (overallScore >= 80) {
+      encouragementMessage = 'رائع ومبهر يا بطل! تذكرت معظم تفاصيل وأحداث قصتك الأولى بدقة.';
+    } else if (overallScore >= 50) {
+      encouragementMessage = 'أحسنت! تذكرت عدة تفاصيل أساسية من قصتك الأولى.';
+    } else {
+      encouragementMessage = 'محاولة جميلة في السرد! اختلفت الرواية الثانية عن الأولى، وفي المرة القادمة ستتذكر أكثر.';
     }
 
     return {
-      overallScore,
-      mainEventsScore,
-      sequenceScore,
-      detailsScore,
-      strengths,
+      overallScore: Math.min(100, Math.max(0, overallScore)),
+      mainEventsScore: Math.min(100, Math.max(0, mainEventsScore)),
+      sequenceScore: Math.min(100, Math.max(0, sequenceScore)),
+      detailsScore: Math.min(100, Math.max(0, detailsScore)),
+      strengths: strengths.slice(0, 3),
       encouragementMessage,
       isFallback: true,
     };

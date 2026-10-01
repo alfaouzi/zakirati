@@ -7,6 +7,7 @@ import com.lfouzi.zakirati.domain.model.StoryAnalysisResult
 import com.lfouzi.zakirati.domain.service.SpeechRecognitionState
 import com.lfouzi.zakirati.domain.service.SpeechToTextService
 import com.lfouzi.zakirati.domain.service.StoryAnalysisService
+import com.lfouzi.zakirati.domain.validation.StoryTranscriptValidator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,6 +17,7 @@ data class GameUiState(
     val gameState: GameState = GameState.HOME,
     val firstStoryTranscript: String = "",
     val secondStoryTranscript: String = "",
+    val liveTranscript: String = "",
     val analysisResult: StoryAnalysisResult? = null,
     val errorMessage: String? = null,
     val isRecording: Boolean = false,
@@ -35,10 +37,17 @@ class GameViewModel(
             speechService.state.collect { recState ->
                 when (recState) {
                     is SpeechRecognitionState.Listening -> {
-                        _uiState.value = _uiState.value.copy(isRecording = true)
+                        _uiState.value = _uiState.value.copy(
+                            isRecording = true,
+                            liveTranscript = recState.currentTranscript,
+                            errorMessage = null
+                        )
                     }
                     is SpeechRecognitionState.Success -> {
-                        _uiState.value = _uiState.value.copy(isRecording = false)
+                        _uiState.value = _uiState.value.copy(
+                            isRecording = false,
+                            liveTranscript = ""
+                        )
                         handleSpeechCaptured(recState.transcript)
                     }
                     is SpeechRecognitionState.Error -> {
@@ -79,12 +88,15 @@ class GameViewModel(
     }
 
     fun confirmRoundOne() {
-        if (_uiState.value.firstStoryTranscript.isBlank()) {
+        val transcript = _uiState.value.firstStoryTranscript
+        val validation = StoryTranscriptValidator.validate(transcript)
+        if (validation is StoryTranscriptValidator.ValidationResult.Insufficient) {
             _uiState.value = _uiState.value.copy(
-                errorMessage = "لم أستطع سماع القصة بوضوح. حاول مرة أخرى."
+                errorMessage = validation.gentleMessage
             )
             return
         }
+
         _uiState.value = _uiState.value.copy(
             gameState = GameState.ROUND_TWO,
             errorMessage = null
@@ -114,9 +126,21 @@ class GameViewModel(
 
     fun startStoryComparison() {
         val state = _uiState.value
-        if (state.secondStoryTranscript.isBlank()) {
+
+        // Validate second round story content
+        val validationTwo = StoryTranscriptValidator.validate(state.secondStoryTranscript)
+        if (validationTwo is StoryTranscriptValidator.ValidationResult.Insufficient) {
             _uiState.value = state.copy(
-                errorMessage = "لم أستطع سماع القصة بوضوح. حاول مرة أخرى."
+                errorMessage = validationTwo.gentleMessage
+            )
+            return
+        }
+
+        // Validate first round story content
+        val validationOne = StoryTranscriptValidator.validate(state.firstStoryTranscript)
+        if (validationOne is StoryTranscriptValidator.ValidationResult.Insufficient) {
+            _uiState.value = state.copy(
+                errorMessage = validationOne.gentleMessage
             )
             return
         }
@@ -168,17 +192,22 @@ class GameViewModel(
     }
 
     private fun handleSpeechCaptured(transcript: String) {
+        val validation = StoryTranscriptValidator.validate(transcript)
+        val gentleNotice = (validation as? StoryTranscriptValidator.ValidationResult.Insufficient)?.gentleMessage
+
         when (_uiState.value.gameState) {
             GameState.ROUND_ONE_RECORDING -> {
                 _uiState.value = _uiState.value.copy(
                     gameState = GameState.ROUND_ONE_RECORDED,
-                    firstStoryTranscript = transcript
+                    firstStoryTranscript = transcript,
+                    errorMessage = gentleNotice
                 )
             }
             GameState.ROUND_TWO_RECORDING -> {
                 _uiState.value = _uiState.value.copy(
                     gameState = GameState.ROUND_TWO_RECORDED,
-                    secondStoryTranscript = transcript
+                    secondStoryTranscript = transcript,
+                    errorMessage = gentleNotice
                 )
             }
             else -> {}

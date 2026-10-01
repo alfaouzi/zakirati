@@ -105,7 +105,7 @@ fun ResultScreen(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "ما الذي تذكرته جيدًا؟",
+                    text = if (result.overallScore > 0) "ما الذي تذكرته جيدًا؟" else "ملاحظات التذكر والسرد",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Black
                 )

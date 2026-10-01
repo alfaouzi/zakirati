@@ -106,7 +106,7 @@ fun RoundTwoScreen(
 
             if (isRecording) {
                 Text(
-                    text = "جارٍ التسجيل...",
+                    text = "جارٍ الاستماع...",
                     color = MaterialTheme.colorScheme.error,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
@@ -131,7 +131,9 @@ fun RoundTwoScreen(
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = if (isRecorded) "تم تسجيل القصة الثانية." else "ابدأ التسجيل",
+                    text = if (isRecorded) {
+                        if (state.errorMessage != null) "احكِ المزيد بالضغط على الميكروفون" else "تم الاستماع إلى قصتك الثانية بنجاح."
+                    } else "ابدأ التسجيل",
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
                 )
